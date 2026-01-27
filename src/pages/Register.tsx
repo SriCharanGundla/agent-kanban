@@ -1,3 +1,5 @@
+import { RegisterForm } from "@/components/auth/RegisterForm";
+
 export function Register() {
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -7,9 +9,7 @@ export function Register() {
           <p className="text-muted-foreground">Get started with AgentKanban</p>
         </div>
         <div className="rounded-lg border p-6">
-          <p className="text-center text-muted-foreground">
-            Registration form will be implemented in Phase 4
-          </p>
+          <RegisterForm />
         </div>
       </div>
     </div>

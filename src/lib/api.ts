@@ -6,6 +6,7 @@ import type {
   Project,
   ProjectCreate,
   ProjectUpdate,
+  ProjectWithStats,
   SubtaskCreate,
   SubtaskUpdate,
   Subtask,
@@ -161,8 +162,8 @@ export const authApi = {
 // ============================================================================
 
 export const projectsApi = {
-  list: async (): Promise<Project[]> => {
-    return apiFetch<Project[]>("/projects");
+  list: async (): Promise<ProjectWithStats[]> => {
+    return apiFetch<ProjectWithStats[]>("/projects");
   },
 
   get: async (id: string): Promise<Project> => {

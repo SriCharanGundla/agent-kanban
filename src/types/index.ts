@@ -47,6 +47,11 @@ export interface ProjectUpdate {
   description?: string | null;
 }
 
+export interface ProjectWithStats extends Project {
+  task_count: number;
+  done_count: number;
+}
+
 // ============================================================================
 // Task Types
 // ============================================================================

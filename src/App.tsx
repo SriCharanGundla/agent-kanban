@@ -9,6 +9,7 @@ import { Landing } from "@/pages/Landing";
 import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { Dashboard } from "@/pages/Dashboard";
+import { ProjectBoard } from "@/pages/ProjectBoard";
 import { Settings } from "@/pages/Settings";
 
 export function App() {
@@ -48,6 +49,14 @@ export function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:id"
+            element={
+              <ProtectedRoute>
+                <ProjectBoard />
               </ProtectedRoute>
             }
           />
