@@ -93,16 +93,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
       {hasSubtasks && (
         <CardContent className="p-3 pt-0">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex gap-0.5">
-              {subtasks.map((subtask) => (
-                <span key={subtask.id}>
-                  {subtask.is_completed ? "☑" : "☐"}
-                </span>
-              ))}
-            </div>
-            <span>
-              {completedSubtasks}/{subtasks.length}
+          <div className="flex justify-end">
+            <span className="text-xs text-muted-foreground">
+              {completedSubtasks}/{subtasks.length} completed
             </span>
           </div>
         </CardContent>

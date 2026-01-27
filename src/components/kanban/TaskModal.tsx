@@ -172,12 +172,13 @@ export function TaskModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Task Details</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <ScrollArea className="max-h-[calc(90vh-10rem)]">
+            <div className="space-y-4 pr-4">
             {/* Title */}
             <Field label="Title" required>
               <Input
@@ -234,40 +235,6 @@ export function TaskModal({
             <div className="space-y-2">
               <Field label="Subtasks" helperText={`${completedSubtasks}/${subtasks.length} completed`}>
                 <div className="space-y-3">
-                  {subtasks.length > 0 && (
-                    <ScrollArea className="max-h-48 rounded-md border">
-                      <div className="space-y-1 p-2">
-                        {subtasks.map((subtask) => (
-                          <div
-                            key={subtask.id}
-                            className="flex items-center gap-3 rounded-md border bg-card p-3 transition-colors hover:bg-accent/50"
-                          >
-                            <Checkbox
-                              checked={subtask.is_completed}
-                              onCheckedChange={() => handleToggleSubtask(subtask)}
-                              className="shrink-0"
-                            />
-                            <span
-                              className={`flex-1 text-sm ${
-                                subtask.is_completed ? "line-through text-muted-foreground" : ""
-                              }`}
-                            >
-                              {subtask.title}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDeleteSubtask(subtask.id)}
-                              className="h-8 w-8 shrink-0 p-0 text-destructive hover:bg-destructive/10"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-                  
                   {/* Add Subtask */}
                   <div className="flex gap-2">
                     <Input
@@ -290,6 +257,40 @@ export function TaskModal({
                       Add
                     </Button>
                   </div>
+
+                  {subtasks.length > 0 && (
+                    <ScrollArea className="h-64 rounded-md border">
+                      <div className="space-y-1 p-2">
+                        {subtasks.map((subtask) => (
+                          <div
+                            key={subtask.id}
+                            className="flex items-center gap-3 rounded-md border bg-card p-3 transition-colors hover:bg-accent/50"
+                          >
+                            <Checkbox
+                              checked={subtask.is_completed}
+                              onCheckedChange={() => handleToggleSubtask(subtask)}
+                              className="shrink-0"
+                            />
+                            <span
+                              className={`flex-1 text-xs ${
+                                subtask.is_completed ? "line-through text-muted-foreground" : ""
+                              }`}
+                            >
+                              {subtask.title}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteSubtask(subtask.id)}
+                              className="h-8 w-8 shrink-0 p-0 text-destructive hover:bg-destructive/10"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
                 </div>
               </Field>
 
@@ -311,8 +312,9 @@ export function TaskModal({
               <p>Updated: {new Date(task.updated_at).toLocaleString()}</p>
             </div>
           </div>
+          </ScrollArea>
 
-          <DialogFooter className="flex justify-between">
+          <DialogFooter className="flex justify-between mt-4">
             <Button
               type="button"
               variant="destructive"
