@@ -1,5 +1,6 @@
 """Authentication Service"""
 
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -10,6 +11,10 @@ from app.config import settings
 
 # Initialize password hasher with Argon2
 pwd_hash = PasswordHash.recommended()
+
+# API Key configuration
+API_KEY_PREFIX = "ak_"
+API_KEY_LENGTH = 32  # 32 bytes → 64 hex characters after prefix
 
 
 def hash_password(password: str) -> str:
@@ -58,3 +63,30 @@ def decode_access_token(token: str) -> uuid.UUID | None:
         return uuid.UUID(user_id)
     except (jwt.InvalidTokenError, ValueError):
         return None
+
+
+# API Key Functions
+
+
+def generate_api_key() -> str:
+    """Generate a new API key with prefix"""
+    random_part = secrets.token_hex(API_KEY_LENGTH)
+    return f"{API_KEY_PREFIX}{random_part}"
+
+
+def hash_api_key(api_key: str) -> str:
+    """Hash an API key using Argon2 (same as passwords)"""
+    return pwd_hash.hash(api_key)
+
+
+def verify_api_key(plain_key: str, hashed_key: str) -> bool:
+    """Verify an API key against its hash using constant-time comparison"""
+    return pwd_hash.verify(plain_key, hashed_key)
+
+
+def extract_key_prefix(api_key: str) -> str:
+    """Extract the prefix from an API key for identification (first 12 chars total)"""
+    if not api_key.startswith(API_KEY_PREFIX):
+        return ""
+    # Return first 12 characters total (including "ak_" + 9 hex chars)
+    return api_key[:12]

@@ -30,7 +30,7 @@ class ApiKey(Base):
         nullable=False,
     )
     key_prefix: Mapped[str] = mapped_column(
-        String(8),
+        String(12),
         nullable=False,
         index=True,
     )
