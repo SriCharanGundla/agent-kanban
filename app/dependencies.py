@@ -3,12 +3,21 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.exceptions import (
+    api_key_expired,
+    api_key_invalid,
+    api_key_invalid_format,
+    api_key_required,
+    auth_required,
+    invalid_token,
+    user_inactive,
+)
 from app.models.api_key import ApiKey
 from app.models.user import User
 from app.services.auth import decode_access_token, verify_api_key
@@ -32,36 +41,24 @@ async def get_current_user(
         User: The authenticated user
 
     Raises:
-        HTTPException: If token is invalid or user not found
+        AppException: If token is invalid or user not found
     """
     if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
+        raise auth_required()
+
     token = credentials.credentials
 
     # Decode the JWT token
     user_id = decode_access_token(token)
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise invalid_token()
 
     # Get the user from database
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if user is None or not user.is_active or user.deleted_at is not None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise user_inactive()
 
     return user
 
@@ -81,21 +78,14 @@ async def get_current_user_from_api_key(
         User: The authenticated user
 
     Raises:
-        HTTPException: If API key is invalid or inactive
+        AppException: If API key is invalid or inactive
     """
     if x_api_key is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key required",
-            headers={"WWW-Authenticate": 'ApiKey realm="API Key"'},
-        )
+        raise api_key_required()
 
     # Validate API key format
     if not x_api_key.startswith("ak_"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key format",
-        )
+        raise api_key_invalid_format()
 
     # Extract prefix for lookup (first 12 chars total)
     key_prefix = x_api_key[:12]
@@ -114,20 +104,18 @@ async def get_current_user_from_api_key(
             matched_key = api_key
 
     if matched_key is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or inactive API key",
-        )
+        raise api_key_invalid()
 
     # Check expiration
     if matched_key.expires_at:
         # Ensure timezone-aware comparison (SQLite returns naive datetimes)
-        expires_at = matched_key.expires_at.replace(tzinfo=UTC) if matched_key.expires_at.tzinfo is None else matched_key.expires_at
+        expires_at = (
+            matched_key.expires_at.replace(tzinfo=UTC)
+            if matched_key.expires_at.tzinfo is None
+            else matched_key.expires_at
+        )
         if expires_at < datetime.now(UTC):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="API key has expired",
-            )
+            raise api_key_expired()
 
     # Update last_used_at timestamp (will be committed by get_db at request end)
     matched_key.last_used_at = datetime.now(UTC)
@@ -137,10 +125,7 @@ async def get_current_user_from_api_key(
     user = result.scalar_one_or_none()
 
     if user is None or not user.is_active or user.deleted_at is not None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-        )
+        raise user_inactive()
 
     return user
 
@@ -166,7 +151,7 @@ async def get_current_user_flexible(
         User: The authenticated user
 
     Raises:
-        HTTPException: If authentication fails
+        AppException: If authentication fails
     """
     # Try JWT first if present
     if credentials:
@@ -183,11 +168,7 @@ async def get_current_user_flexible(
         return await get_current_user_from_api_key(x_api_key, db)
 
     # No valid authentication provided
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication required (Bearer token or API key)",
-        headers={"WWW-Authenticate": 'Bearer, ApiKey realm="API Key"'},
-    )
+    raise auth_required()
 
 
 # Type annotations for dependency injection

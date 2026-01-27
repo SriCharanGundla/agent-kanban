@@ -40,8 +40,8 @@ class TestUserRegistration:
                 "full_name": "Duplicate User",
             },
         )
-        assert response.status_code == 400
-        assert "registration failed" in response.json()["detail"].lower()
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "EMAIL_ALREADY_EXISTS"
 
     async def test_register_invalid_email(self, client: AsyncClient):
         """Test registration with invalid email format"""
@@ -111,7 +111,7 @@ class TestUserLogin:
         """Test successful login"""
         response = await client.post(
             "/api/v1/auth/login",
-            json={
+            data={  # Changed from json= to data=
                 "username": test_user.email,  # OAuth2 uses 'username'
                 "password": "testpassword123",
             },
@@ -126,24 +126,25 @@ class TestUserLogin:
         """Test login with wrong password"""
         response = await client.post(
             "/api/v1/auth/login",
-            json={
+            data={  # Changed from json= to data=
                 "username": test_user.email,
                 "password": "wrongpassword",
             },
         )
         assert response.status_code == 401
-        assert "incorrect" in response.json()["detail"].lower()
+        assert response.json()["detail"]["code"] == "INVALID_CREDENTIALS"
 
     async def test_login_wrong_email(self, client: AsyncClient):
         """Test login with non-existent email"""
         response = await client.post(
             "/api/v1/auth/login",
-            json={
+            data={  # Changed from json= to data=
                 "username": "nonexistent@example.com",
                 "password": "password123",
             },
         )
         assert response.status_code == 401
+        assert response.json()["detail"]["code"] == "INVALID_CREDENTIALS"
 
     async def test_login_inactive_user(self, client: AsyncClient, test_db: AsyncSession):
         """Test login with inactive user"""
@@ -161,12 +162,13 @@ class TestUserLogin:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={
+            data={  # Changed from json= to data=
                 "username": "inactive@example.com",
                 "password": "password123",
             },
         )
         assert response.status_code == 401
+        assert response.json()["detail"]["code"] == "INVALID_CREDENTIALS"
 
     async def test_login_deleted_user(self, client: AsyncClient, test_db: AsyncSession):
         """Test login with soft-deleted user"""
@@ -185,18 +187,21 @@ class TestUserLogin:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={
+            data={  # Changed from json= to data=
                 "username": "deleted@example.com",
                 "password": "password123",
             },
         )
         assert response.status_code == 401
+        assert response.json()["detail"]["code"] == "INVALID_CREDENTIALS"
 
 
 class TestGetCurrentUser:
     """Test get current user endpoint"""
 
-    async def test_me_success(self, client: AsyncClient, auth_headers: dict[str, str], test_user: User):
+    async def test_me_success(
+        self, client: AsyncClient, auth_headers: dict[str, str], test_user: User
+    ):
         """Test getting current user info"""
         response = await client.get("/api/v1/auth/me", headers=auth_headers)
         assert response.status_code == 200
@@ -210,6 +215,7 @@ class TestGetCurrentUser:
         """Test getting current user without authentication"""
         response = await client.get("/api/v1/auth/me")
         assert response.status_code == 401
+        assert response.json()["detail"]["code"] == "AUTH_REQUIRED"
 
     async def test_me_invalid_token(self, client: AsyncClient):
         """Test with invalid token"""
@@ -218,6 +224,7 @@ class TestGetCurrentUser:
             headers={"Authorization": "Bearer invalid.token.here"},
         )
         assert response.status_code == 401
+        assert response.json()["detail"]["code"] == "INVALID_TOKEN"
 
     async def test_me_malformed_auth_header(self, client: AsyncClient):
         """Test with malformed auth header"""
@@ -226,3 +233,4 @@ class TestGetCurrentUser:
             headers={"Authorization": "NotBearer token"},
         )
         assert response.status_code == 401
+        assert response.json()["detail"]["code"] == "AUTH_REQUIRED"

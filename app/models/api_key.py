@@ -34,6 +34,11 @@ class ApiKey(Base):
         nullable=False,
         index=True,
     )
+    key_suffix: Mapped[str | None] = mapped_column(
+        String(4),
+        nullable=True,
+        default=None,
+    )
     key_hash: Mapped[str] = mapped_column(
         String(255),
         nullable=False,

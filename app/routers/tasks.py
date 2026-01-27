@@ -3,12 +3,13 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import CurrentUserFlexible
+from app.exceptions import project_access_denied, project_not_found, task_not_found
 from app.models.project import Project
 from app.models.subtask import Subtask
 from app.models.task import Task
@@ -38,16 +39,10 @@ async def verify_project_ownership(
     project = result.scalar_one_or_none()
 
     if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+        raise project_not_found()
 
     if project.owner_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to access this project",
-        )
+        raise project_access_denied()
 
     return project
 
@@ -101,7 +96,7 @@ async def list_tasks(
 @router.post(
     "/projects/{project_id}/tasks",
     response_model=TaskResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=201,
 )
 async def create_task(
     project_id: UUID,
@@ -177,13 +172,10 @@ async def get_task(
     task = result.scalar_one_or_none()
 
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(str(task.project_id), current_user.id, db)
+    await verify_project_ownership(task.project_id, current_user.id, db)
 
     # Get subtasks
     subtasks_result = await db.execute(
@@ -246,13 +238,10 @@ async def update_task(
     task = result.scalar_one_or_none()
 
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(str(task.project_id), current_user.id, db)
+    await verify_project_ownership(task.project_id, current_user.id, db)
 
     # Update fields if provided
     if task_data.title is not None:
@@ -307,13 +296,10 @@ async def update_task_status(
     task = result.scalar_one_or_none()
 
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(str(task.project_id), current_user.id, db)
+    await verify_project_ownership(task.project_id, current_user.id, db)
 
     # Get the next position for the new status
     max_position_result = await db.execute(
@@ -370,13 +356,10 @@ async def reorder_task(
     task = result.scalar_one_or_none()
 
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(str(task.project_id), current_user.id, db)
+    await verify_project_ownership(task.project_id, current_user.id, db)
 
     # Update status if provided
     if reorder_data.status is not None:
@@ -402,7 +385,7 @@ async def reorder_task(
     )
 
 
-@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/tasks/{task_id}", status_code=204)
 async def delete_task(
     task_id: UUID,
     current_user: CurrentUserFlexible,
@@ -423,13 +406,10 @@ async def delete_task(
     task = result.scalar_one_or_none()
 
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(str(task.project_id), current_user.id, db)
+    await verify_project_ownership(task.project_id, current_user.id, db)
 
     # Soft delete
     task.deleted_at = datetime.now(UTC)

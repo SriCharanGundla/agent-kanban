@@ -98,7 +98,7 @@ class TestAPIKeyAuthentication:
 
         response = await client.get("/api/v1/projects", headers=headers)
         assert response.status_code == 401
-        assert "invalid api key format" in response.json()["detail"].lower()
+        assert response.json()["detail"]["code"] == "API_KEY_INVALID_FORMAT"
 
     async def test_api_key_auth_revoked(
         self, client: AsyncClient, test_db: AsyncSession, test_user: User
@@ -126,7 +126,7 @@ class TestAPIKeyAuthentication:
         """Test that expired API key is rejected"""
         response = await client.get("/api/v1/projects", headers=expired_api_key_headers)
         assert response.status_code == 401
-        assert "expired" in response.json()["detail"].lower()
+        assert response.json()["detail"]["code"] == "API_KEY_EXPIRED"
 
     async def test_api_key_auth_inactive_user(
         self, client: AsyncClient, test_db: AsyncSession, test_user: User

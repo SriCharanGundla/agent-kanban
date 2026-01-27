@@ -71,6 +71,7 @@ echo ""
 echo "${GREEN}[6/8] Starting container on port $BACKEND_PORT...${NC}"
 docker run -d \
   --name $CONTAINER_NAME \
+  --restart unless-stopped \
   -p $BACKEND_PORT:8000 \
   --env-file ../be-env/.env \
   $IMAGE_NAME

@@ -3,12 +3,13 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import CurrentUserFlexible
+from app.exceptions import subtask_not_found, task_access_denied, task_not_found
 from app.models.project import Project
 from app.models.subtask import Subtask
 from app.models.task import Task
@@ -28,10 +29,7 @@ async def verify_task_ownership(task_id: UUID, user_id: UUID, db: AsyncSession) 
     task = result.scalar_one_or_none()
 
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise task_not_found()
 
     # Verify project ownership
     project_result = await db.execute(
@@ -43,10 +41,7 @@ async def verify_task_ownership(task_id: UUID, user_id: UUID, db: AsyncSession) 
     project = project_result.scalar_one_or_none()
 
     if project is None or project.owner_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to access this task",
-        )
+        raise task_access_denied()
 
     return task
 
@@ -95,7 +90,7 @@ async def list_subtasks(
 @router.post(
     "/tasks/{task_id}/subtasks",
     response_model=SubtaskResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=201,
 )
 async def create_subtask(
     task_id: UUID,
@@ -161,13 +156,10 @@ async def update_subtask(
     subtask = result.scalar_one_or_none()
 
     if subtask is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subtask not found",
-        )
+        raise subtask_not_found()
 
     # Verify task ownership
-    await verify_task_ownership(str(subtask.task_id), current_user.id, db)
+    await verify_task_ownership(subtask.task_id, current_user.id, db)
 
     # Update fields if provided
     if subtask_data.title is not None:
@@ -193,7 +185,7 @@ async def update_subtask(
     )
 
 
-@router.delete("/subtasks/{subtask_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/subtasks/{subtask_id}", status_code=204)
 async def delete_subtask(
     subtask_id: UUID,
     current_user: CurrentUserFlexible,
@@ -209,13 +201,10 @@ async def delete_subtask(
     subtask = result.scalar_one_or_none()
 
     if subtask is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subtask not found",
-        )
+        raise subtask_not_found()
 
     # Verify task ownership
-    await verify_task_ownership(str(subtask.task_id), current_user.id, db)
+    await verify_task_ownership(subtask.task_id, current_user.id, db)
 
     # Hard delete (subtasks don't have soft delete)
     await db.delete(subtask)

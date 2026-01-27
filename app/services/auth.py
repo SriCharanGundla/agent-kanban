@@ -90,3 +90,8 @@ def extract_key_prefix(api_key: str) -> str:
         return ""
     # Return first 12 characters total (including "ak_" + 9 hex chars)
     return api_key[:12]
+
+
+def extract_key_suffix(api_key: str) -> str:
+    """Extract the last 4 characters of an API key for display purposes"""
+    return api_key[-4:]

@@ -3,12 +3,13 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import CurrentUserFlexible
+from app.exceptions import project_access_denied, project_not_found
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, ProjectWithStats
@@ -83,7 +84,7 @@ async def list_projects(
     ]
 
 
-@router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ProjectResponse, status_code=201)
 async def create_project(
     project_data: ProjectCreate,
     current_user: CurrentUserFlexible,
@@ -136,17 +137,11 @@ async def get_project(
     project = result.scalar_one_or_none()
 
     if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+        raise project_not_found()
 
     # Verify ownership
     if project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to access this project",
-        )
+        raise project_access_denied()
 
     # Get task statistics
     task_count_result = await db.execute(
@@ -200,17 +195,11 @@ async def update_project(
     project = result.scalar_one_or_none()
 
     if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+        raise project_not_found()
 
     # Verify ownership
     if project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to update this project",
-        )
+        raise project_access_denied()
 
     # Update fields that were explicitly provided (including None values)
     update_data = project_data.model_dump(exclude_unset=True)
@@ -235,7 +224,7 @@ async def update_project(
     )
 
 
-@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{project_id}", status_code=204)
 async def delete_project(
     project_id: UUID,
     current_user: CurrentUserFlexible,
@@ -257,17 +246,11 @@ async def delete_project(
     project = result.scalar_one_or_none()
 
     if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+        raise project_not_found()
 
     # Verify ownership
     if project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to delete this project",
-        )
+        raise project_access_denied()
 
     # Soft delete
     project.deleted_at = datetime.now(UTC)

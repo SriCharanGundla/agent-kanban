@@ -18,6 +18,7 @@ class ApiKeyResponse(BaseModel):
     id: UUID
     name: str
     key_prefix: str
+    key_suffix: str | None = None
     last_used_at: datetime | None
     is_active: bool
     created_at: datetime
@@ -29,4 +30,4 @@ class ApiKeyResponse(BaseModel):
 class ApiKeyCreateResponse(ApiKeyResponse):
     """Schema for API key creation response (includes full key once)"""
 
-    api_key: str = Field(..., description="Full API key - shown only once!")
+    key: str = Field(..., description="Full API key - shown only once!")
