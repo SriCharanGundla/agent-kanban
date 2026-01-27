@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Vite/pnpm caches
+.vite
+.pnpm-store
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
