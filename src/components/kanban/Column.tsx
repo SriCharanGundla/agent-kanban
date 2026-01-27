@@ -1,5 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Plus } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import { Button } from "@/components/ui/button";
 import type { Task, TaskStatus } from "@/types";
@@ -30,9 +31,9 @@ export function Column({ status, label, tasks, onTaskClick, onAddTask }: ColumnP
           size="sm"
           variant="ghost"
           onClick={() => onAddTask(status)}
-          className="h-6 w-6 p-0"
+          className="h-8 w-8 p-0"
         >
-          +
+          <Plus className="h-5 w-5" />
         </Button>
       </div>
 

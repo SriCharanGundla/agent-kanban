@@ -19,6 +19,7 @@ import type {
   User,
   UserCreate,
   UserLogin,
+  UserUpdate,
 } from "@/types";
 
 // ============================================================================
@@ -198,6 +199,13 @@ export const authApi = {
   me: async (): Promise<User> => {
     return apiFetch<User>("/auth/me", {
       skipRedirectOn401: true,
+    });
+  },
+
+  updateProfile: async (data: UserUpdate): Promise<User> => {
+    return apiFetch<User>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
     });
   },
 };

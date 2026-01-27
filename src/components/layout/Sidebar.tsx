@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { LayoutDashboard, Folder, Settings, ChevronDown, LogOut, User } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -19,10 +20,52 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
+import { projectsApi } from "@/lib/api";
+import type { ProjectWithStats } from "@/types";
 
 export function AppSidebar() {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [projects, setProjects] = useState<ProjectWithStats[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  // Fetch projects when user changes
+  useEffect(() => {
+    // Clear projects if no user (logged out)
+    if (!user) {
+      setProjects([]);
+      setLoadingProjects(false);
+      return;
+    }
+
+    const abortController = new AbortController();
+    let isMounted = true;
+
+    const fetchProjects = async () => {
+      try {
+        setLoadingProjects(true);
+        const fetchedProjects = await projectsApi.list();
+        if (isMounted) {
+          setProjects(fetchedProjects);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error("Failed to fetch projects:", error);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingProjects(false);
+        }
+      }
+    };
+
+    fetchProjects();
+
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
+  }, [user?.id]);
 
   // Navigation items
   const navItems = [
@@ -80,17 +123,40 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Projects - Placeholder for Phase 4 */}
+        {/* Projects */}
         <SidebarGroup>
           <SidebarGroupLabel>Projects</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton disabled>
-                  <Folder className="opacity-50" />
-                  <span className="text-muted-foreground">No projects yet</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {loadingProjects ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled>
+                    <Folder className="opacity-50" />
+                    <span className="text-muted-foreground">Loading...</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : projects.length === 0 ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled>
+                    <Folder className="opacity-50" />
+                    <span className="text-muted-foreground">No projects yet</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : (
+                projects.map((project) => (
+                  <SidebarMenuItem key={project.id}>
+                    <Link to={`/projects/${project.id}`} className="flex w-full">
+                      <SidebarMenuButton
+                        isActive={location.pathname === `/projects/${project.id}`}
+                        className="w-full"
+                      >
+                        <Folder />
+                        <span>{project.name}</span>
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+                ))
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -102,7 +168,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <SidebarMenuButton>
+                <SidebarMenuButton render={<div />}>
                   <User />
                   <span>{user?.full_name || "User"}</span>
                   <ChevronDown className="ml-auto" />

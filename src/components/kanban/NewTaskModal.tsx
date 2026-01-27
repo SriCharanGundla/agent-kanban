@@ -30,17 +30,17 @@ interface NewTaskModalProps {
 }
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
-  { value: "BACKLOG", label: "Backlog" },
-  { value: "TODO", label: "To Do" },
-  { value: "IN_PROGRESS", label: "In Progress" },
-  { value: "DONE", label: "Done" },
+  { value: "backlog", label: "Backlog" },
+  { value: "todo", label: "To Do" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "done", label: "Done" },
 ];
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
-  { value: "LOW", label: "Low" },
-  { value: "MEDIUM", label: "Medium" },
-  { value: "HIGH", label: "High" },
-  { value: "URGENT", label: "Urgent" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "urgent", label: "Urgent" },
 ];
 
 export function NewTaskModal({
@@ -48,12 +48,12 @@ export function NewTaskModal({
   onOpenChange,
   onTaskCreated,
   projectId,
-  defaultStatus = "TODO",
+  defaultStatus = "todo",
 }: NewTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
-  const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
+  const [priority, setPriority] = useState<TaskPriority>("medium");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ title?: string }>({});
 
@@ -69,7 +69,7 @@ export function NewTaskModal({
       setTitle("");
       setDescription("");
       setStatus(defaultStatus);
-      setPriority("MEDIUM");
+      setPriority("medium");
       setErrors({});
       onOpenChange(false);
     }

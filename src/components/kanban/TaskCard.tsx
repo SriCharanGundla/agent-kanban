@@ -14,10 +14,10 @@ const PRIORITY_STYLES: Record<
   TaskPriority,
   { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
 > = {
-  LOW: { label: "Low", variant: "secondary" },
-  MEDIUM: { label: "Medium", variant: "default" },
-  HIGH: { label: "High", variant: "outline" },
-  URGENT: { label: "Urgent", variant: "destructive" },
+  low: { label: "Low", variant: "secondary" },
+  medium: { label: "Medium", variant: "default" },
+  high: { label: "High", variant: "outline" },
+  urgent: { label: "Urgent", variant: "destructive" },
 };
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
@@ -76,7 +76,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             <h4 className="text-sm font-medium leading-tight line-clamp-2">
               {task.title}
             </h4>
-            {task.priority !== "MEDIUM" && (
+            {task.priority !== "medium" && (
               <Badge variant={priority.variant} className="shrink-0 text-xs">
                 {priority.label}
               </Badge>

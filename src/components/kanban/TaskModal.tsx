@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 import { tasksApi, subtasksApi } from "@/lib/api";
 import {
@@ -19,8 +20,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -41,17 +44,17 @@ interface TaskModalProps {
 }
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
-  { value: "BACKLOG", label: "Backlog" },
-  { value: "TODO", label: "To Do" },
-  { value: "IN_PROGRESS", label: "In Progress" },
-  { value: "DONE", label: "Done" },
+  { value: "backlog", label: "Backlog" },
+  { value: "todo", label: "To Do" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "done", label: "Done" },
 ];
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
-  { value: "LOW", label: "Low" },
-  { value: "MEDIUM", label: "Medium" },
-  { value: "HIGH", label: "High" },
-  { value: "URGENT", label: "Urgent" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "urgent", label: "Urgent" },
 ];
 
 export function TaskModal({
@@ -169,7 +172,7 @@ export function TaskModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Task Details</DialogTitle>
           </DialogHeader>
@@ -230,38 +233,39 @@ export function TaskModal({
             {/* Subtasks */}
             <div className="space-y-2">
               <Field label="Subtasks" helperText={`${completedSubtasks}/${subtasks.length} completed`}>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {subtasks.length > 0 && (
-                    <div className="space-y-1">
-                      {subtasks.map((subtask) => (
-                        <div
-                          key={subtask.id}
-                          className="flex items-center gap-2 rounded border p-2"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={subtask.is_completed}
-                            onChange={() => handleToggleSubtask(subtask)}
-                            className="h-4 w-4"
-                          />
-                          <span
-                            className={`flex-1 text-sm ${
-                              subtask.is_completed ? "line-through text-muted-foreground" : ""
-                            }`}
+                    <ScrollArea className="max-h-48 rounded-md border">
+                      <div className="space-y-1 p-2">
+                        {subtasks.map((subtask) => (
+                          <div
+                            key={subtask.id}
+                            className="flex items-center gap-3 rounded-md border bg-card p-3 transition-colors hover:bg-accent/50"
                           >
-                            {subtask.title}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteSubtask(subtask.id)}
-                            className="h-6 w-6 p-0 text-destructive"
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                            <Checkbox
+                              checked={subtask.is_completed}
+                              onCheckedChange={() => handleToggleSubtask(subtask)}
+                              className="shrink-0"
+                            />
+                            <span
+                              className={`flex-1 text-sm ${
+                                subtask.is_completed ? "line-through text-muted-foreground" : ""
+                              }`}
+                            >
+                              {subtask.title}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteSubtask(subtask.id)}
+                              className="h-8 w-8 shrink-0 p-0 text-destructive hover:bg-destructive/10"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
                   )}
                   
                   {/* Add Subtask */}

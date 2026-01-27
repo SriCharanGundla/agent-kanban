@@ -10,6 +10,7 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Column } from "./Column";
 import { NewTaskModal } from "./NewTaskModal";
@@ -28,10 +29,10 @@ interface BoardProps {
 }
 
 const COLUMNS: { status: TaskStatus; label: string }[] = [
-  { status: "BACKLOG", label: "Backlog" },
-  { status: "TODO", label: "To Do" },
-  { status: "IN_PROGRESS", label: "In Progress" },
-  { status: "DONE", label: "Done" },
+  { status: "backlog", label: "Backlog" },
+  { status: "todo", label: "To Do" },
+  { status: "in_progress", label: "In Progress" },
+  { status: "done", label: "Done" },
 ];
 
 export function Board({
@@ -43,7 +44,7 @@ export function Board({
 }: BoardProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
-  const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>("TODO");
+  const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>("todo");
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // Configure sensors for drag and drop
@@ -61,10 +62,10 @@ export function Board({
   // Precompute grouped and sorted tasks for better performance
   const tasksByStatus = useMemo(() => {
     const grouped: Record<TaskStatus, Task[]> = {
-      BACKLOG: [],
-      TODO: [],
-      IN_PROGRESS: [],
-      DONE: [],
+      backlog: [],
+      todo: [],
+      in_progress: [],
+      done: [],
     };
 
     // Group tasks by status
@@ -218,7 +219,10 @@ export function Board({
       <div className="space-y-4">
         {/* Add Task Button */}
         <div className="flex justify-end">
-          <Button onClick={() => handleAddTask("TODO")}>+ Add Task</Button>
+          <Button onClick={() => handleAddTask("todo")}>
+            <Plus className="h-5 w-5" />
+            Add Task
+          </Button>
         </div>
 
         {/* Board Columns */}

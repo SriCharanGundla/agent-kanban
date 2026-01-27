@@ -24,6 +24,10 @@ export interface UserLogin {
   password: string;
 }
 
+export interface UserUpdate {
+  full_name?: string;
+}
+
 // ============================================================================
 // Project Types
 // ============================================================================
@@ -56,9 +60,9 @@ export interface ProjectWithStats extends Project {
 // Task Types
 // ============================================================================
 
-export type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "DONE";
+export type TaskStatus = "backlog" | "todo" | "in_progress" | "done";
 
-export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
 export interface Task {
   id: string;

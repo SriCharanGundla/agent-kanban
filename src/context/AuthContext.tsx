@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { authApi, setToken, clearToken, getToken } from "@/lib/api";
-import type { User, UserCreate, UserLogin } from "@/types";
+import type { User, UserCreate, UserLogin, UserUpdate } from "@/types";
 
 // ============================================================================
 // Types
@@ -13,6 +13,7 @@ interface AuthContextValue {
   login: (credentials: UserLogin) => Promise<void>;
   register: (data: UserCreate) => Promise<void>;
   logout: () => void;
+  updateProfile: (data: UserUpdate) => Promise<void>;
 }
 
 // ============================================================================
@@ -116,6 +117,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearToken();
   }, []);
 
+  // Update profile function
+  const updateProfile = useCallback(async (data: UserUpdate): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const updatedUser = await authApi.updateProfile(data);
+      setUser(updatedUser);
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo(
     () => ({
@@ -125,8 +139,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       login,
       register,
       logout,
+      updateProfile,
     }),
-    [user, isLoading, login, register, logout]
+    [user, isLoading, login, register, logout, updateProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
