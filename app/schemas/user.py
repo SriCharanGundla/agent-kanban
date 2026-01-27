@@ -21,6 +21,12 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UserUpdate(BaseModel):
+    """Schema for updating user profile"""
+
+    full_name: str | None = Field(None, min_length=1, max_length=255)
+
+
 class UserResponse(BaseModel):
     """Schema for user response"""
 

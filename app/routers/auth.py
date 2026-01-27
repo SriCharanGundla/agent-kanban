@@ -11,7 +11,7 @@ from app.database import get_db
 from app.dependencies import CurrentUser
 from app.exceptions import email_already_exists, invalid_credentials
 from app.models.user import User
-from app.schemas.user import Token, UserCreate, UserResponse
+from app.schemas.user import Token, UserCreate, UserResponse, UserUpdate
 from app.services.auth import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -108,4 +108,31 @@ async def get_current_user_info(
     Returns:
         UserResponse: Current user information
     """
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_current_user(
+    user_data: UserUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User:
+    """
+    Update current authenticated user's profile.
+
+    Args:
+        user_data: User update data (full_name)
+        current_user: Current authenticated user (from JWT token)
+        db: Database session
+
+    Returns:
+        UserResponse: Updated user information
+    """
+    # Update fields if provided
+    if user_data.full_name is not None:
+        current_user.full_name = user_data.full_name
+
+    await db.commit()
+    await db.refresh(current_user)
+
     return current_user

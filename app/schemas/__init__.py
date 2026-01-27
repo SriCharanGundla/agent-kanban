@@ -29,12 +29,14 @@ from app.schemas.user import (
     UserCreate,
     UserLogin,
     UserResponse,
+    UserUpdate,
 )
 
 __all__ = [
     # User schemas
     "UserCreate",
     "UserLogin",
+    "UserUpdate",
     "UserResponse",
     "Token",
     # API Key schemas
