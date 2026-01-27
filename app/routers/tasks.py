@@ -47,19 +47,19 @@ async def verify_project_ownership(
     return project
 
 
-@router.get("/projects/{project_id}/tasks", response_model=list[TaskResponse])
+@router.get("/projects/{project_id}/tasks", response_model=list[TaskWithSubtasks])
 async def list_tasks(
     project_id: UUID,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
     limit: int = 100,
     offset: int = 0,
-) -> list[TaskResponse]:
+) -> list[TaskWithSubtasks]:
     """
-    List all tasks in a project.
+    List all tasks in a project with their subtasks.
 
     Supports JWT or API Key authentication.
-    Returns tasks ordered by status and position.
+    Returns tasks ordered by status and position, including subtasks.
     """
     # Verify project ownership
     await verify_project_ownership(project_id, current_user.id, db)
@@ -77,20 +77,50 @@ async def list_tasks(
     )
     tasks = result.scalars().all()
 
-    return [
-        TaskResponse(
-            id=task.id,
-            project_id=task.project_id,
-            title=task.title,
-            description=task.description,
-            status=task.status,
-            priority=task.priority,
-            position=task.position,
-            created_at=task.created_at,
-            updated_at=task.updated_at,
+    # Build response with subtasks for each task
+    response = []
+    for task in tasks:
+        # Get subtasks for this task
+        subtasks_result = await db.execute(
+            select(Subtask)
+            .where(Subtask.task_id == task.id)
+            .order_by(Subtask.position)
         )
-        for task in tasks
-    ]
+        subtasks = subtasks_result.scalars().all()
+
+        # Calculate subtask statistics
+        completed_count = sum(1 for st in subtasks if st.is_completed)
+        total_count = len(subtasks)
+
+        response.append(
+            TaskWithSubtasks(
+                id=task.id,
+                project_id=task.project_id,
+                title=task.title,
+                description=task.description,
+                status=task.status,
+                priority=task.priority,
+                position=task.position,
+                created_at=task.created_at,
+                updated_at=task.updated_at,
+                subtasks=[
+                    SubtaskResponse(
+                        id=st.id,
+                        task_id=st.task_id,
+                        title=st.title,
+                        is_completed=st.is_completed,
+                        position=st.position,
+                        created_at=st.created_at,
+                        updated_at=st.updated_at,
+                    )
+                    for st in subtasks
+                ],
+                completed_subtasks=completed_count,
+                total_subtasks=total_count,
+            )
+        )
+
+    return response
 
 
 @router.post(
