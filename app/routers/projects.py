@@ -15,21 +15,49 @@ from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, P
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
-@router.get("", response_model=list[ProjectResponse])
+@router.get("", response_model=list[ProjectWithStats])
 async def list_projects(
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
     limit: int = 20,
     offset: int = 0,
-) -> list[ProjectResponse]:
+) -> list[ProjectWithStats]:
     """
-    List all projects for the current user.
+    List all projects for the current user with task statistics.
 
     Supports JWT or API Key authentication.
     Returns projects sorted by most recently updated.
+    Includes task_count and done_count for each project.
     """
+    # Correlated subquery for total task count
+    task_count_subq = (
+        select(func.count(Task.id))
+        .where(
+            Task.project_id == Project.id,
+            Task.deleted_at.is_(None),
+        )
+        .correlate(Project)
+        .scalar_subquery()
+    )
+
+    # Correlated subquery for completed task count
+    done_count_subq = (
+        select(func.count(Task.id))
+        .where(
+            Task.project_id == Project.id,
+            Task.status == TaskStatus.DONE,
+            Task.deleted_at.is_(None),
+        )
+        .correlate(Project)
+        .scalar_subquery()
+    )
+
     result = await db.execute(
-        select(Project)
+        select(
+            Project,
+            task_count_subq.label("task_count"),
+            done_count_subq.label("done_count"),
+        )
         .where(
             Project.owner_id == current_user.id,
             Project.deleted_at.is_(None),
@@ -38,18 +66,19 @@ async def list_projects(
         .limit(limit)
         .offset(offset)
     )
-    projects = result.scalars().all()
 
     return [
-        ProjectResponse(
-            id=project.id,
-            owner_id=project.owner_id,
-            name=project.name,
-            description=project.description,
-            created_at=project.created_at,
-            updated_at=project.updated_at,
+        ProjectWithStats(
+            id=row.Project.id,
+            owner_id=row.Project.owner_id,
+            name=row.Project.name,
+            description=row.Project.description,
+            created_at=row.Project.created_at,
+            updated_at=row.Project.updated_at,
+            task_count=row.task_count,
+            done_count=row.done_count,
         )
-        for project in projects
+        for row in result.all()
     ]
 
 
