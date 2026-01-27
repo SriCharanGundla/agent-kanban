@@ -16,32 +16,32 @@ export function ProjectBoard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
-    if (!id) {
-      navigate("/dashboard");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const [projectData, tasksData] = await Promise.all([
-        projectsApi.get(id),
-        tasksApi.list(id),
-      ]);
-      setProject(projectData);
-      setTasks(tasksData);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load project";
-      toast.error(message);
-      navigate("/dashboard");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchData = async () => {
+      if (!id) {
+        navigate("/dashboard");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const [projectData, tasksData] = await Promise.all([
+          projectsApi.get(id),
+          tasksApi.list(id),
+        ]);
+        setProject(projectData);
+        setTasks(tasksData);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load project";
+        toast.error(message);
+        navigate("/dashboard");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
-  }, [id]);
+  }, [id, navigate]);
 
   const handleTaskUpdate = (updatedTask: Task) => {
     setTasks(tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
