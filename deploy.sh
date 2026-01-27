@@ -67,6 +67,7 @@ echo ""
 echo "${GREEN}[6/6] Starting container on port $FRONTEND_PORT...${NC}"
 docker run -d \
   --name $CONTAINER_NAME \
+  --restart unless-stopped \
   -p $FRONTEND_PORT:80 \
   $IMAGE_NAME
 echo ""

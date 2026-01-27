@@ -151,7 +151,7 @@ export function ApiKeysTab() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground font-mono">
-                      {key.key_prefix}****
+                      {key.key_prefix}...{key.key_suffix || '****'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Last used: {formatDate(key.last_used_at)}

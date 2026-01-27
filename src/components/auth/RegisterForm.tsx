@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ApiError, ErrorCode } from "@/lib/errors";
 
 export function RegisterForm() {
   const navigate = useNavigate();
@@ -80,11 +81,33 @@ export function RegisterForm() {
       });
       toast.success("Account created successfully! Logging you in...");
       navigate("/dashboard");
-    } catch {
-      // Don't reveal specific failure reasons for security
-      toast.error("Registration failed. Please try again.");
-      // Generic error - don't reveal if email exists
-      setErrors({ email: "Unable to create account with this email" });
+    } catch (error) {
+      // Handle ApiError with structured error codes
+      if (error instanceof ApiError) {
+        switch (error.code) {
+          case ErrorCode.REGISTRATION_SUCCESS_LOGIN_FAILED:
+            toast.success("Account created successfully!");
+            toast.info("Please log in with your new credentials.");
+            navigate("/login");
+            return;
+
+          case ErrorCode.EMAIL_ALREADY_EXISTS:
+            toast.warning(error.userMessage);
+            setErrors({ email: "This email is already registered" });
+            return;
+
+          case ErrorCode.VALIDATION_ERROR:
+            toast.error(error.userMessage);
+            return;
+
+          default:
+            toast.error(error.userMessage);
+            return;
+        }
+      }
+
+      // Fallback for non-ApiError (shouldn't happen but be defensive)
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -107,11 +130,7 @@ export function RegisterForm() {
         />
       </Field>
 
-      <Field
-        label="Email"
-        invalid={!!errors.email}
-        errorText={errors.email}
-      >
+      <Field label="Email" invalid={!!errors.email} errorText={errors.email}>
         <Input
           type="email"
           placeholder="you@example.com"
@@ -152,11 +171,7 @@ export function RegisterForm() {
         />
       </Field>
 
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={loading}
-      >
+      <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Creating account..." : "Create Account"}
       </Button>
 

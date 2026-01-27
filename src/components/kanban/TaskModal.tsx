@@ -80,7 +80,7 @@ export function TaskModal({
 
   const handleSave = async () => {
     if (!title.trim()) {
-      toast.error("Task title is required");
+      toast.warning("Task title is required");
       return;
     }
 

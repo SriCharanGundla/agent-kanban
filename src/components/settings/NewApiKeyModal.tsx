@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ApiError } from "@/lib/errors";
 import type { ApiKeyCreated } from "@/types";
 
 interface NewApiKeyModalProps {
@@ -73,8 +74,12 @@ export function NewApiKeyModal({
       // Just signal success - parent will refetch
       onApiKeyCreated();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create API key";
-      toast.error(message);
+      // Handle ApiError with user-friendly messages
+      if (error instanceof ApiError) {
+        toast.error(error.userMessage);
+      } else {
+        toast.error("Failed to create API key. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -93,7 +98,11 @@ export function NewApiKeyModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent
+        className={
+          createdKey ? "w-fit min-w-96 max-w-[90vw] sm:max-w-[90vw]" : undefined
+        }
+      >
         {!createdKey ? (
           <>
             <DialogHeader>

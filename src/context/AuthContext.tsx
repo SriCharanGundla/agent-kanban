@@ -88,11 +88,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Register user
       await authApi.register(data);
       
-      // Auto-login after registration
-      await login({
-        email: data.email,
-        password: data.password,
-      });
+      // Try auto-login after registration
+      try {
+        await login({
+          email: data.email,
+          password: data.password,
+        });
+      } catch (loginError) {
+        // Registration succeeded but auto-login failed
+        // Throw a special error so UI can handle it
+        const error = new Error("REGISTRATION_SUCCESS_LOGIN_FAILED");
+        (error as Error & { originalError?: unknown }).originalError = loginError;
+        throw error;
+      }
     } catch (error) {
       setUser(null);
       clearToken();

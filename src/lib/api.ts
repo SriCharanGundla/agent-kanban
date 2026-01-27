@@ -1,3 +1,4 @@
+import { ApiError, ErrorCode } from "./errors";
 import type {
   ApiKeyCreate,
   ApiKeyCreated,
@@ -24,7 +25,8 @@ import type {
 // Configuration
 // ============================================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:7655";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:7655";
 const API_V1_PREFIX = "/api/v1";
 
 // ============================================================================
@@ -62,7 +64,12 @@ async function apiFetch<T>(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<T> {
-  const { requiresAuth = true, skipRedirectOn401 = false, headers = {}, ...rest } = options;
+  const {
+    requiresAuth = true,
+    skipRedirectOn401 = false,
+    headers = {},
+    ...rest
+  } = options;
 
   const url = `${API_BASE_URL}${API_V1_PREFIX}${endpoint}`;
 
@@ -70,9 +77,12 @@ async function apiFetch<T>(
     ...(headers as Record<string, string>),
   };
 
-  // Only set Content-Type for requests with body or non-GET/HEAD methods
-  const method = (rest.method || 'GET').toUpperCase();
-  if (rest.body || (method !== 'GET' && method !== 'HEAD')) {
+  // Only set Content-Type if not already provided
+  const method = (rest.method || "GET").toUpperCase();
+  if (
+    !requestHeaders["Content-Type"] &&
+    (rest.body || (method !== "GET" && method !== "HEAD"))
+  ) {
     requestHeaders["Content-Type"] = "application/json";
   }
 
@@ -98,19 +108,34 @@ async function apiFetch<T>(
         window.location.href = "/login";
       }
     }
-    throw new Error("Unauthorized - please login again");
+    throw new ApiError(ErrorCode.AUTH_REQUIRED);
   }
 
   // Handle non-2xx responses
   if (!response.ok) {
-    let errorMessage = `Request failed with status ${response.status}`;
+    let errorCode: ErrorCode = ErrorCode.UNKNOWN;
+
     try {
       const errorData = await response.json();
-      errorMessage = errorData.detail || errorMessage;
+
+      // Handle structured error with code
+      if (errorData.detail?.code) {
+        errorCode = errorData.detail.code as ErrorCode;
+      }
+      // Handle FastAPI validation errors (array)
+      else if (Array.isArray(errorData.detail)) {
+        errorCode = ErrorCode.VALIDATION_ERROR;
+      }
+      // Fallback: map HTTP status to error code
+      else {
+        errorCode = mapStatusToErrorCode(response.status);
+      }
     } catch {
-      // If error response is not JSON, use default message
+      // JSON parse failed, use status-based mapping
+      errorCode = mapStatusToErrorCode(response.status);
     }
-    throw new Error(errorMessage);
+
+    throw new ApiError(errorCode);
   }
 
   // Handle 204 No Content
@@ -119,6 +144,26 @@ async function apiFetch<T>(
   }
 
   return response.json();
+}
+
+/**
+ * Map HTTP status codes to error codes when structured error is not available
+ */
+function mapStatusToErrorCode(status: number): ErrorCode {
+  switch (status) {
+    case 401:
+      return ErrorCode.AUTH_REQUIRED;
+    case 403:
+      return ErrorCode.PROJECT_ACCESS_DENIED;
+    case 404:
+      return ErrorCode.PROJECT_NOT_FOUND;
+    case 409:
+      return ErrorCode.EMAIL_ALREADY_EXISTS;
+    case 422:
+      return ErrorCode.VALIDATION_ERROR;
+    default:
+      return ErrorCode.UNKNOWN;
+  }
 }
 
 // ============================================================================

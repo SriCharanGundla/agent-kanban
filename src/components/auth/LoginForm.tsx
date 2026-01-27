@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ApiError, ErrorCode } from "@/lib/errors";
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -13,7 +14,9 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {}
+  );
 
   const validateForm = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
@@ -49,8 +52,32 @@ export function LoginForm() {
       toast.success("Welcome back! Redirecting to dashboard...");
       navigate("/dashboard");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to login";
-      toast.error(message);
+      // Handle ApiError with structured error codes
+      if (error instanceof ApiError) {
+        switch (error.code) {
+          case ErrorCode.INVALID_CREDENTIALS:
+            toast.error(error.userMessage);
+            setErrors({ password: "Incorrect email or password" });
+            return;
+
+          case ErrorCode.USER_INACTIVE:
+            toast.error(error.userMessage);
+            return;
+
+          case ErrorCode.AUTH_REQUIRED:
+          case ErrorCode.INVALID_TOKEN:
+          case ErrorCode.TOKEN_EXPIRED:
+            toast.error(error.userMessage);
+            return;
+
+          default:
+            toast.error(error.userMessage);
+            return;
+        }
+      }
+
+      // Fallback for non-ApiError
+      toast.error("Failed to log in. Please try again.");
       setErrors({ password: "Invalid email or password" });
     } finally {
       setLoading(false);
@@ -59,11 +86,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field
-        label="Email"
-        invalid={!!errors.email}
-        errorText={errors.email}
-      >
+      <Field label="Email" invalid={!!errors.email} errorText={errors.email}>
         <Input
           type="email"
           placeholder="you@example.com"
@@ -89,17 +112,16 @@ export function LoginForm() {
         />
       </Field>
 
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={loading}
-      >
+      <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Signing in..." : "Sign In"}
       </Button>
 
       <div className="text-center text-sm text-muted-foreground">
         Don't have an account?{" "}
-        <Link to="/register" className="font-medium text-primary hover:underline">
+        <Link
+          to="/register"
+          className="font-medium text-primary hover:underline"
+        >
           Sign up
         </Link>
       </div>

@@ -130,6 +130,7 @@ export interface ApiKey {
   user_id: string;
   name: string;
   key_prefix: string;
+  key_suffix: string | null;
   last_used_at: string | null;
   is_active: boolean;
   created_at: string;
@@ -145,6 +146,7 @@ export interface ApiKeyCreated {
   name: string;
   key: string; // Full key only shown once
   key_prefix: string;
+  key_suffix: string;
   created_at: string;
 }
 
