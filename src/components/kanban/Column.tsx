@@ -1,3 +1,5 @@
+import { useDroppable } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { TaskCard } from "./TaskCard";
 import { Button } from "@/components/ui/button";
 import type { Task, TaskStatus } from "@/types";
@@ -11,6 +13,12 @@ interface ColumnProps {
 }
 
 export function Column({ status, label, tasks, onTaskClick, onAddTask }: ColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+  });
+
+  const taskIds = tasks.map((task) => task.id);
+
   return (
     <div className="flex flex-col rounded-lg border bg-card">
       {/* Column Header */}
@@ -29,15 +37,22 @@ export function Column({ status, label, tasks, onTaskClick, onAddTask }: ColumnP
       </div>
 
       {/* Task List */}
-      <div className="flex-1 space-y-2 p-2">
+      <div
+        ref={setNodeRef}
+        className={`flex-1 space-y-2 p-2 transition-colors ${
+          isOver ? "bg-accent/20" : ""
+        }`}
+      >
         {tasks.length === 0 ? (
           <div className="flex h-32 items-center justify-center">
             <p className="text-sm text-muted-foreground">No tasks</p>
           </div>
         ) : (
-          tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
-          ))
+          <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+            {tasks.map((task) => (
+              <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+            ))}
+          </SortableContext>
         )}
       </div>
     </div>

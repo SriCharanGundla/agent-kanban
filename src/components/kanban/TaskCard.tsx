@@ -1,3 +1,6 @@
+import { useRef, useEffect } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Task, TaskPriority } from "@/types";
@@ -25,10 +28,47 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
   const completedSubtasks = subtasks.filter((st) => st.is_completed).length;
   const hasSubtasks = subtasks.length > 0;
 
+  // Setup drag and drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  // Prevent click immediately after drag
+  const wasDragging = useRef(false);
+  
+  useEffect(() => {
+    if (isDragging) {
+      wasDragging.current = true;
+    }
+  }, [isDragging]);
+
+  const handleClick = () => {
+    if (wasDragging.current) {
+      wasDragging.current = false;
+      return;
+    }
+    onClick();
+  };
+
   return (
     <Card
-      className="cursor-pointer transition-colors hover:bg-accent/50"
-      onClick={onClick}
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="cursor-grab active:cursor-grabbing transition-colors hover:bg-accent/50"
+      onClick={handleClick}
     >
       <CardHeader className="p-3">
         <div className="space-y-2">
