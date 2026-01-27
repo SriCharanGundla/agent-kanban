@@ -1,6 +1,7 @@
 """Projects Router"""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -116,7 +117,7 @@ async def create_project(
 
 @router.get("/{project_id}", response_model=ProjectWithStats)
 async def get_project(
-    project_id: str,
+    project_id: UUID,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
 ) -> ProjectWithStats:
@@ -179,7 +180,7 @@ async def get_project(
 
 @router.put("/{project_id}", response_model=ProjectResponse)
 async def update_project(
-    project_id: str,
+    project_id: UUID,
     project_data: ProjectUpdate,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
@@ -211,11 +212,13 @@ async def update_project(
             detail="You don't have permission to update this project",
         )
 
-    # Update fields if provided
-    if project_data.name is not None:
-        project.name = project_data.name
-    if project_data.description is not None:
-        project.description = project_data.description
+    # Update fields that were explicitly provided (including None values)
+    update_data = project_data.model_dump(exclude_unset=True)
+    # Don't allow setting required 'name' field to None
+    if "name" in update_data and update_data["name"] is None:
+        del update_data["name"]
+    for field, value in update_data.items():
+        setattr(project, field, value)
 
     project.updated_at = datetime.now(UTC)
 
@@ -234,7 +237,7 @@ async def update_project(
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
-    project_id: str,
+    project_id: UUID,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
 ) -> None:

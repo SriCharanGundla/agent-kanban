@@ -120,11 +120,14 @@ async def get_current_user_from_api_key(
         )
 
     # Check expiration
-    if matched_key.expires_at and matched_key.expires_at < datetime.now(UTC):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key has expired",
-        )
+    if matched_key.expires_at:
+        # Ensure timezone-aware comparison (SQLite returns naive datetimes)
+        expires_at = matched_key.expires_at.replace(tzinfo=UTC) if matched_key.expires_at.tzinfo is None else matched_key.expires_at
+        if expires_at < datetime.now(UTC):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API key has expired",
+            )
 
     # Update last_used_at timestamp (will be committed by get_db at request end)
     matched_key.last_used_at = datetime.now(UTC)
@@ -144,8 +147,8 @@ async def get_current_user_from_api_key(
 
 async def get_current_user_flexible(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
-    x_api_key: Annotated[str | None, Header()],
     db: Annotated[AsyncSession, Depends(get_db)],
+    x_api_key: Annotated[str | None, Header()] = None,
 ) -> User:
     """
     Dependency to get the current authenticated user from either JWT or API key.

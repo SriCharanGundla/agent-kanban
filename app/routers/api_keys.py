@@ -1,6 +1,7 @@
 """API Keys Router"""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -73,7 +74,7 @@ async def list_api_keys(
     """
     result = await db.execute(
         select(ApiKey)
-        .where(ApiKey.user_id == current_user.id)
+        .where(ApiKey.user_id == current_user.id, ApiKey.is_active.is_(True))
         .order_by(ApiKey.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -96,7 +97,7 @@ async def list_api_keys(
 
 @router.delete("/{api_key_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_api_key(
-    api_key_id: str,
+    api_key_id: UUID,
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ) -> None:
@@ -106,21 +107,18 @@ async def revoke_api_key(
     Requires JWT authentication (web UI only).
     The API key must belong to the current user.
     """
-    # Get the API key
-    result = await db.execute(select(ApiKey).where(ApiKey.id == api_key_id))
+    # Get the API key (only if it belongs to the current user and is active)
+    result = await db.execute(
+        select(ApiKey).where(
+            ApiKey.id == api_key_id, ApiKey.user_id == current_user.id, ApiKey.is_active.is_(True)
+        )
+    )
     api_key = result.scalar_one_or_none()
 
     if api_key is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="API key not found",
-        )
-
-    # Verify ownership
-    if api_key.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to revoke this API key",
         )
 
     # Deactivate the key (soft revoke)

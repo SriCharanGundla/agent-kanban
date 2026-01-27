@@ -1,6 +1,7 @@
 """Tasks Router"""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -25,7 +26,7 @@ router = APIRouter(tags=["Tasks"])
 
 
 async def verify_project_ownership(
-    project_id: str, user_id: str, db: AsyncSession
+    project_id: UUID, user_id: UUID, db: AsyncSession
 ) -> Project:
     """Helper function to verify project exists and user owns it"""
     result = await db.execute(
@@ -53,7 +54,7 @@ async def verify_project_ownership(
 
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskResponse])
 async def list_tasks(
-    project_id: str,
+    project_id: UUID,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
     limit: int = 100,
@@ -103,7 +104,7 @@ async def list_tasks(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_task(
-    project_id: str,
+    project_id: UUID,
     task_data: TaskCreate,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
@@ -157,7 +158,7 @@ async def create_task(
 
 @router.get("/tasks/{task_id}", response_model=TaskWithSubtasks)
 async def get_task(
-    task_id: str,
+    task_id: UUID,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
 ) -> TaskWithSubtasks:
@@ -225,7 +226,7 @@ async def get_task(
 
 @router.put("/tasks/{task_id}", response_model=TaskResponse)
 async def update_task(
-    task_id: str,
+    task_id: UUID,
     task_data: TaskUpdate,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
@@ -285,7 +286,7 @@ async def update_task(
 
 @router.patch("/tasks/{task_id}/status", response_model=TaskResponse)
 async def update_task_status(
-    task_id: str,
+    task_id: UUID,
     status_data: TaskStatusUpdate,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
@@ -347,7 +348,7 @@ async def update_task_status(
 
 @router.patch("/tasks/{task_id}/reorder", response_model=TaskResponse)
 async def reorder_task(
-    task_id: str,
+    task_id: UUID,
     reorder_data: TaskReorderRequest,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
@@ -403,7 +404,7 @@ async def reorder_task(
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
-    task_id: str,
+    task_id: UUID,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
 ) -> None:

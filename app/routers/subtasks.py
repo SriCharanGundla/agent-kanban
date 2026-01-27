@@ -1,6 +1,7 @@
 """Subtasks Router"""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -16,7 +17,7 @@ from app.schemas.subtask import SubtaskCreate, SubtaskResponse, SubtaskUpdate
 router = APIRouter(tags=["Subtasks"])
 
 
-async def verify_task_ownership(task_id: str, user_id: str, db: AsyncSession) -> Task:
+async def verify_task_ownership(task_id: UUID, user_id: UUID, db: AsyncSession) -> Task:
     """Helper function to verify task exists and user owns it through project"""
     result = await db.execute(
         select(Task).where(
@@ -52,7 +53,7 @@ async def verify_task_ownership(task_id: str, user_id: str, db: AsyncSession) ->
 
 @router.get("/tasks/{task_id}/subtasks", response_model=list[SubtaskResponse])
 async def list_subtasks(
-    task_id: str,
+    task_id: UUID,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
     limit: int = 100,
@@ -97,7 +98,7 @@ async def list_subtasks(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_subtask(
-    task_id: str,
+    task_id: UUID,
     subtask_data: SubtaskCreate,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
@@ -145,7 +146,7 @@ async def create_subtask(
 
 @router.patch("/subtasks/{subtask_id}", response_model=SubtaskResponse)
 async def update_subtask(
-    subtask_id: str,
+    subtask_id: UUID,
     subtask_data: SubtaskUpdate,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
@@ -194,7 +195,7 @@ async def update_subtask(
 
 @router.delete("/subtasks/{subtask_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_subtask(
-    subtask_id: str,
+    subtask_id: UUID,
     current_user: CurrentUserFlexible,
     db: AsyncSession = Depends(get_db),
 ) -> None:

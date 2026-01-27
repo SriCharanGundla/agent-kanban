@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str
+    TEST_DATABASE_URL: str | None = None
 
     # JWT
     JWT_SECRET_KEY: str
