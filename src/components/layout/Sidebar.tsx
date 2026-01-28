@@ -88,10 +88,14 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <Link to="/dashboard" className="flex w-full">
-              <SidebarMenuButton size="lg" className="w-full">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Folder className="size-4" />
-                </div>
+              <SidebarMenuButton size="lg" className="w-full" tooltip="AgentKanban">
+                <img 
+                  src="/logo-32.png"
+                  srcSet="/logo-32.png 1x, /logo-64.png 2x"
+                  alt="Agent Kanban" 
+                  className="size-8 rounded-lg flex-shrink-0"
+                  style={{ objectFit: 'contain' }}
+                />
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">AgentKanban</span>
                   <span className="text-xs text-muted-foreground">Kanban for AI</span>
