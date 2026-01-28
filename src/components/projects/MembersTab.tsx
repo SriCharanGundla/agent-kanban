@@ -24,10 +24,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { InviteMemberDialog } from "./InviteMemberDialog";
 import { ApiError } from "@/lib/errors";
-import type { ProjectMember, ProjectRole, Project } from "@/types";
+import type { ProjectMember, ProjectRole, Project, ProjectWithStats } from "@/types";
 
 interface MembersTabProps {
-  project: Project;
+  project: Project | ProjectWithStats;
   currentUserIsOwner: boolean;
   currentUserId: string;
 }

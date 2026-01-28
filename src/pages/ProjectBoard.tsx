@@ -60,6 +60,22 @@ export function ProjectBoard() {
     setTasks([...tasks, newTask]);
   };
 
+  const handleProjectUpdate = (updatedProject: ProjectWithStats | import("@/types").Project) => {
+    // Preserve stats if they exist in the current project
+    if (project && 'task_count' in updatedProject) {
+      setProject(updatedProject as ProjectWithStats);
+    } else if (project) {
+      // Merge updated fields with existing stats
+      setProject({
+        ...updatedProject,
+        task_count: project.task_count,
+        done_count: project.done_count,
+        user_role: project.user_role,
+        member_count: project.member_count,
+      });
+    }
+  };
+
   if (loading) {
     return (
       <AppLayout title="Loading...">
@@ -128,7 +144,7 @@ export function ProjectBoard() {
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           project={project}
-          onProjectUpdate={setProject}
+          onProjectUpdate={handleProjectUpdate}
           currentUserIsOwner={currentUserIsOwner}
           currentUserId={user.id}
         />

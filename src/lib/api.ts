@@ -225,8 +225,8 @@ export const projectsApi = {
     return apiFetch<ProjectWithStats[]>("/projects");
   },
 
-  get: async (id: string): Promise<Project> => {
-    return apiFetch<Project>(`/projects/${id}`);
+  get: async (id: string): Promise<ProjectWithStats> => {
+    return apiFetch<ProjectWithStats>(`/projects/${id}`);
   },
 
   create: async (data: ProjectCreate): Promise<Project> => {

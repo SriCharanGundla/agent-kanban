@@ -16,7 +16,6 @@ export function AcceptInvitation() {
 
   const [state, setState] = useState<AcceptState>("loading");
   const [error, setError] = useState<string | null>(null);
-  const [projectId, setProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     // Wait for auth to load
@@ -43,7 +42,6 @@ export function AcceptInvitation() {
     try {
       setState("loading");
       const response = await invitationsApi.accept(invitationToken);
-      setProjectId(response.project_id);
       setState("success");
       // Redirect after a brief delay
       setTimeout(() => {

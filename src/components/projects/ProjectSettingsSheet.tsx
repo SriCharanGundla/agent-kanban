@@ -9,13 +9,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneralSettingsTab } from "./GeneralSettingsTab";
 import { MembersTab } from "./MembersTab";
-import type { Project } from "@/types";
+import type { Project, ProjectWithStats } from "@/types";
 
 interface ProjectSettingsSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project;
-  onProjectUpdate: (project: Project) => void;
+  project: ProjectWithStats;
+  onProjectUpdate: (project: Project | ProjectWithStats) => void;
   currentUserIsOwner: boolean;
   currentUserId: string;
 }

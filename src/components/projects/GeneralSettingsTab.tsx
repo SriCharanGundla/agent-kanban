@@ -17,11 +17,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ApiError } from "@/lib/errors";
-import type { Project } from "@/types";
+import type { Project, ProjectWithStats } from "@/types";
 
 interface GeneralSettingsTabProps {
-  project: Project;
-  onProjectUpdate: (project: Project) => void;
+  project: Project | ProjectWithStats;
+  onProjectUpdate: (project: Project | ProjectWithStats) => void;
   currentUserIsOwner: boolean;
 }
 
@@ -71,7 +71,11 @@ export function GeneralSettingsTab({
         name: name.trim(),
         description: description.trim() || null,
       });
-      onProjectUpdate(updated);
+      // Preserve stats if the original project had them
+      const updatedProject = 'task_count' in project
+        ? { ...updated, task_count: project.task_count, done_count: project.done_count, user_role: project.user_role, member_count: project.member_count }
+        : updated;
+      onProjectUpdate(updatedProject);
       toast.success("Project updated successfully");
     } catch (error) {
       const message =

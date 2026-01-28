@@ -17,7 +17,7 @@ export function Dashboard() {
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   
   // Fetch pending invitations
-  const { invitations, isLoading: invitationsLoading, accept, decline, refresh } = useInvitations();
+  const { invitations, isLoading: invitationsLoading, accept, decline } = useInvitations();
 
   const fetchData = async () => {
     try {
