@@ -65,9 +65,13 @@ async def list_tasks(
     # Verify project access
     await verify_project_access(project_id, current_user.id, db)
 
-    # Get tasks
+    # Get tasks with assignee relationship
+    from sqlalchemy.orm import selectinload
+    from app.models.user import User
+    
     result = await db.execute(
         select(Task)
+        .options(selectinload(Task.assignee))
         .where(
             Task.project_id == project_id,
             Task.deleted_at.is_(None),
@@ -102,6 +106,8 @@ async def list_tasks(
                 status=task.status,
                 priority=task.priority,
                 position=task.position,
+                assignee_id=task.assignee_id,
+                assignee_name=task.assignee.name if task.assignee else None,
                 created_at=task.created_at,
                 updated_at=task.updated_at,
                 subtasks=[
@@ -168,6 +174,9 @@ async def create_task(
     db.add(new_task)
     await db.commit()
     await db.refresh(new_task)
+    # Load assignee relationship if exists
+    if new_task.assignee_id:
+        await db.refresh(new_task, ["assignee"])
 
     return TaskResponse(
         id=new_task.id,
@@ -177,6 +186,8 @@ async def create_task(
         status=new_task.status,
         priority=new_task.priority,
         position=new_task.position,
+        assignee_id=new_task.assignee_id,
+        assignee_name=new_task.assignee.name if new_task.assignee else None,
         created_at=new_task.created_at,
         updated_at=new_task.updated_at,
     )
@@ -193,9 +204,13 @@ async def get_task(
 
     Supports JWT or API Key authentication.
     """
-    # Get the task
+    # Get the task with assignee relationship
+    from sqlalchemy.orm import selectinload
+    
     result = await db.execute(
-        select(Task).where(
+        select(Task)
+        .options(selectinload(Task.assignee))
+        .where(
             Task.id == task_id,
             Task.deleted_at.is_(None),
         )
@@ -228,6 +243,8 @@ async def get_task(
         status=task.status,
         priority=task.priority,
         position=task.position,
+        assignee_id=task.assignee_id,
+        assignee_name=task.assignee.name if task.assignee else None,
         created_at=task.created_at,
         updated_at=task.updated_at,
         subtasks=[
@@ -285,11 +302,16 @@ async def update_task(
         task.priority = task_data.priority
     if task_data.position is not None:
         task.position = task_data.position
+    if task_data.assignee_id is not None:
+        task.assignee_id = task_data.assignee_id
 
     task.updated_at = datetime.now(UTC)
 
     await db.commit()
     await db.refresh(task)
+    # Load assignee relationship if exists
+    if task.assignee_id:
+        await db.refresh(task, ["assignee"])
 
     return TaskResponse(
         id=task.id,
@@ -299,6 +321,8 @@ async def update_task(
         status=task.status,
         priority=task.priority,
         position=task.position,
+        assignee_id=task.assignee_id,
+        assignee_name=task.assignee.name if task.assignee else None,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -349,6 +373,9 @@ async def update_task_status(
 
     await db.commit()
     await db.refresh(task)
+    # Load assignee relationship if exists
+    if task.assignee_id:
+        await db.refresh(task, ["assignee"])
 
     return TaskResponse(
         id=task.id,
@@ -358,6 +385,8 @@ async def update_task_status(
         status=task.status,
         priority=task.priority,
         position=task.position,
+        assignee_id=task.assignee_id,
+        assignee_name=task.assignee.name if task.assignee else None,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -402,6 +431,9 @@ async def reorder_task(
 
     await db.commit()
     await db.refresh(task)
+    # Load assignee relationship if exists
+    if task.assignee_id:
+        await db.refresh(task, ["assignee"])
 
     return TaskResponse(
         id=task.id,
@@ -411,6 +443,8 @@ async def reorder_task(
         status=task.status,
         priority=task.priority,
         position=task.position,
+        assignee_id=task.assignee_id,
+        assignee_name=task.assignee.name if task.assignee else None,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )

@@ -15,6 +15,7 @@ class TaskCreate(BaseModel):
     description: str | None = Field(None, description="Task description")
     status: TaskStatus = Field(default=TaskStatus.BACKLOG, description="Task status")
     priority: TaskPriority = Field(default=TaskPriority.MEDIUM, description="Task priority")
+    assignee_id: UUID | None = Field(None, description="User ID to assign task to")
 
 
 class TaskUpdate(BaseModel):
@@ -25,6 +26,7 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = Field(None, description="Task status")
     priority: TaskPriority | None = Field(None, description="Task priority")
     position: int | None = Field(None, ge=0, description="Task position in column")
+    assignee_id: UUID | None = Field(None, description="User ID to assign task to")
 
 
 class TaskStatusUpdate(BaseModel):
@@ -50,6 +52,8 @@ class TaskResponse(BaseModel):
     status: TaskStatus
     priority: TaskPriority
     position: int
+    assignee_id: UUID | None
+    assignee_name: str | None = None
     created_at: datetime
     updated_at: datetime
 

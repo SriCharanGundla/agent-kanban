@@ -68,6 +68,13 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
         default=0,
         nullable=False,
     )
+    assignee_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        index=True,
+    )
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="tasks")
@@ -76,6 +83,7 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
         back_populates="task",
         cascade="all, delete-orphan",
     )
+    assignee: Mapped["User | None"] = relationship("User", foreign_keys=[assignee_id])
 
     def __repr__(self) -> str:
         return f"<Task {self.title}>"
