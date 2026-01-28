@@ -14,12 +14,13 @@ from app.models.project import Project
 from app.models.subtask import Subtask
 from app.models.task import Task
 from app.schemas.subtask import SubtaskCreate, SubtaskResponse, SubtaskUpdate
+from app.services.project_access import can_access_project
 
 router = APIRouter(tags=["Subtasks"])
 
 
 async def verify_task_ownership(task_id: UUID, user_id: UUID, db: AsyncSession) -> Task:
-    """Helper function to verify task exists and user owns it through project"""
+    """Helper function to verify task exists and user has access to it through project"""
     result = await db.execute(
         select(Task).where(
             Task.id == task_id,
@@ -31,16 +32,8 @@ async def verify_task_ownership(task_id: UUID, user_id: UUID, db: AsyncSession) 
     if task is None:
         raise task_not_found()
 
-    # Verify project ownership
-    project_result = await db.execute(
-        select(Project).where(
-            Project.id == task.project_id,
-            Project.deleted_at.is_(None),
-        )
-    )
-    project = project_result.scalar_one_or_none()
-
-    if project is None or project.owner_id != user_id:
+    # Verify project access (owner or accepted member)
+    if not await can_access_project(db, task.project_id, user_id):
         raise task_access_denied()
 
     return task

@@ -13,6 +13,14 @@ from app.exceptions import project_access_denied, project_not_found
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, ProjectWithStats
+from app.models.project_member import MembershipStatus, ProjectMember, ProjectRole
+from app.services.project_access import (
+    can_access_project,
+    get_project_member_count,
+    get_user_project_ids,
+    get_user_role_in_project,
+    is_project_owner,
+)
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -28,9 +36,16 @@ async def list_projects(
     List all projects for the current user with task statistics.
 
     Supports JWT or API Key authentication.
-    Returns projects sorted by most recently updated.
+    Returns projects the user owns or is a member of.
+    Sorted by most recently updated.
     Includes task_count and done_count for each project.
     """
+    # Get all project IDs the user has access to (owned + member)
+    project_ids = await get_user_project_ids(db, current_user.id)
+
+    if not project_ids:
+        return []
+
     # Correlated subquery for total task count
     task_count_subq = (
         select(func.count(Task.id))
@@ -61,7 +76,7 @@ async def list_projects(
             done_count_subq.label("done_count"),
         )
         .where(
-            Project.owner_id == current_user.id,
+            Project.id.in_(project_ids),
             Project.deleted_at.is_(None),
         )
         .order_by(Project.updated_at.desc())
@@ -69,19 +84,69 @@ async def list_projects(
         .offset(offset)
     )
 
-    return [
-        ProjectWithStats(
-            id=row.Project.id,
-            owner_id=row.Project.owner_id,
-            name=row.Project.name,
-            description=row.Project.description,
-            created_at=row.Project.created_at,
-            updated_at=row.Project.updated_at,
-            task_count=row.task_count,
-            done_count=row.done_count,
+    # Fetch all rows first
+    rows = result.all()
+    
+    if not rows:
+        return []
+    
+    project_ids_fetched = [row.Project.id for row in rows]
+
+    # Batch fetch: user roles for all projects
+    role_result = await db.execute(
+        select(ProjectMember.project_id, ProjectMember.role)
+        .where(
+            ProjectMember.project_id.in_(project_ids_fetched),
+            ProjectMember.user_id == current_user.id,
+            ProjectMember.status == MembershipStatus.accepted,
         )
-        for row in result.all()
-    ]
+    )
+    user_roles_map = {r.project_id: r.role for r in role_result.all()}
+
+    # Batch fetch: member counts for all projects
+    count_result = await db.execute(
+        select(
+            ProjectMember.project_id,
+            func.count(ProjectMember.id).label("count")
+        )
+        .where(
+            ProjectMember.project_id.in_(project_ids_fetched),
+            ProjectMember.status == MembershipStatus.accepted,
+        )
+        .group_by(ProjectMember.project_id)
+    )
+    member_counts_map = {r.project_id: r.count + 1 for r in count_result.all()}
+
+    # Build response using maps
+    projects_with_stats = []
+    for row in rows:
+        pid = row.Project.id
+        
+        # Determine role: check if owner first, then lookup in members
+        if row.Project.owner_id == current_user.id:
+            user_role = ProjectRole.owner
+        else:
+            user_role = user_roles_map.get(pid)
+        
+        # Member count: from map, default to 1 (just owner) if not in map
+        member_count = member_counts_map.get(pid, 1)
+        
+        projects_with_stats.append(
+            ProjectWithStats(
+                id=pid,
+                owner_id=row.Project.owner_id,
+                name=row.Project.name,
+                description=row.Project.description,
+                created_at=row.Project.created_at,
+                updated_at=row.Project.updated_at,
+                task_count=row.task_count,
+                done_count=row.done_count,
+                user_role=user_role.value if user_role else None,
+                member_count=member_count,
+            )
+        )
+    
+    return projects_with_stats
 
 
 @router.post("", response_model=ProjectResponse, status_code=201)
@@ -126,6 +191,7 @@ async def get_project(
     Get a specific project with task statistics.
 
     Supports JWT or API Key authentication.
+    Accessible by project owner and accepted members.
     """
     # Get the project
     result = await db.execute(
@@ -139,8 +205,8 @@ async def get_project(
     if project is None:
         raise project_not_found()
 
-    # Verify ownership
-    if project.owner_id != current_user.id:
+    # Verify access (owner or accepted member)
+    if not await can_access_project(db, project_id, current_user.id):
         raise project_access_denied()
 
     # Get task statistics
@@ -161,6 +227,12 @@ async def get_project(
     )
     done_count = done_count_result.scalar_one()
 
+    # Get user's role in this project
+    user_role = await get_user_role_in_project(db, project_id, current_user.id)
+    
+    # Get member count for this project
+    member_count = await get_project_member_count(db, project_id)
+
     return ProjectWithStats(
         id=project.id,
         owner_id=project.owner_id,
@@ -170,6 +242,8 @@ async def get_project(
         updated_at=project.updated_at,
         task_count=task_count,
         done_count=done_count,
+        user_role=user_role.value if user_role else None,
+        member_count=member_count,
     )
 
 
@@ -184,6 +258,7 @@ async def update_project(
     Update a project.
 
     Supports JWT or API Key authentication.
+    Only project owners can update project settings.
     """
     # Get the project
     result = await db.execute(
@@ -197,8 +272,8 @@ async def update_project(
     if project is None:
         raise project_not_found()
 
-    # Verify ownership
-    if project.owner_id != current_user.id:
+    # Verify ownership (only owners can update project settings)
+    if not await is_project_owner(db, project_id, current_user.id):
         raise project_access_denied()
 
     # Update fields that were explicitly provided (including None values)
@@ -234,6 +309,7 @@ async def delete_project(
     Soft delete a project.
 
     Supports JWT or API Key authentication.
+    Only the original project creator can delete the project.
     This marks the project as deleted but doesn't remove it from the database.
     """
     # Get the project
@@ -248,7 +324,7 @@ async def delete_project(
     if project is None:
         raise project_not_found()
 
-    # Verify ownership
+    # Verify ownership - only original creator can delete
     if project.owner_id != current_user.id:
         raise project_access_denied()
 

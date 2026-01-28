@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import api_keys, auth, projects, subtasks, tasks
+from app.routers import api_keys, auth, invitations, project_members, projects, subtasks, tasks
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,8 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(api_keys.router, prefix=settings.API_V1_PREFIX)
 app.include_router(projects.router, prefix=settings.API_V1_PREFIX)
+app.include_router(project_members.router, prefix=settings.API_V1_PREFIX)
+app.include_router(invitations.router, prefix=settings.API_V1_PREFIX)
 app.include_router(tasks.router, prefix=settings.API_V1_PREFIX)
 app.include_router(subtasks.router, prefix=settings.API_V1_PREFIX)
 

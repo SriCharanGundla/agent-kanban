@@ -49,6 +49,12 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         back_populates="owner",
         cascade="all, delete-orphan",
     )
+    project_memberships: Mapped[list["ProjectMember"]] = relationship(
+        "ProjectMember",
+        foreign_keys="ProjectMember.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"

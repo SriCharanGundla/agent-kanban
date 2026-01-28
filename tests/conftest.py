@@ -14,6 +14,7 @@ from app.main import app
 from app.models.api_key import ApiKey
 from app.models.base import Base
 from app.models.project import Project
+from app.models.project_member import MembershipStatus, ProjectMember, ProjectRole
 from app.models.subtask import Subtask
 from app.models.task import Task, TaskPriority, TaskStatus
 from app.models.user import User
@@ -122,9 +123,41 @@ async def test_user2(test_db: AsyncSession) -> User:
 
 
 @pytest.fixture(scope="function")
+async def test_user3(test_db: AsyncSession) -> User:
+    """Create a third test user for collaboration tests"""
+    user = User(
+        id=uuid.uuid4(),
+        email="test3@example.com",
+        password_hash=hash_password("testpassword123"),
+        full_name="Test User 3",
+        is_active=True,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    test_db.add(user)
+    await test_db.commit()
+    await test_db.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
 def auth_headers(test_user: User) -> dict[str, str]:
     """Create JWT authentication headers"""
     token = create_access_token(test_user.id)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="function")
+def auth_headers_user2(test_user2: User) -> dict[str, str]:
+    """Create JWT authentication headers for test_user2"""
+    token = create_access_token(test_user2.id)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="function")
+def auth_headers_user3(test_user3: User) -> dict[str, str]:
+    """Create JWT authentication headers for test_user3"""
+    token = create_access_token(test_user3.id)
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -225,3 +258,27 @@ async def test_subtask(test_task: Task, test_db: AsyncSession) -> Subtask:
     await test_db.commit()
     await test_db.refresh(subtask)
     return subtask
+
+
+@pytest.fixture(scope="function")
+async def test_project_member(
+    test_project: Project, test_user2: User, test_user: User, test_db: AsyncSession
+) -> ProjectMember:
+    """Create an accepted project member"""
+    member = ProjectMember(
+        id=uuid.uuid4(),
+        project_id=test_project.id,
+        user_id=test_user2.id,
+        email=test_user2.email,
+        role=ProjectRole.member,
+        status=MembershipStatus.accepted,
+        invitation_token="test_token_accepted",
+        invited_by_id=test_user.id,
+        created_at=datetime.now(UTC),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
+        accepted_at=datetime.now(UTC),
+    )
+    test_db.add(member)
+    await test_db.commit()
+    await test_db.refresh(member)
+    return member

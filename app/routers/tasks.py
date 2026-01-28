@@ -22,14 +22,15 @@ from app.schemas.task import (
     TaskUpdate,
     TaskWithSubtasks,
 )
+from app.services.project_access import can_access_project
 
 router = APIRouter(tags=["Tasks"])
 
 
-async def verify_project_ownership(
+async def verify_project_access(
     project_id: UUID, user_id: UUID, db: AsyncSession
 ) -> Project:
-    """Helper function to verify project exists and user owns it"""
+    """Helper function to verify project exists and user has access to it"""
     result = await db.execute(
         select(Project).where(
             Project.id == project_id,
@@ -41,7 +42,7 @@ async def verify_project_ownership(
     if project is None:
         raise project_not_found()
 
-    if project.owner_id != user_id:
+    if not await can_access_project(db, project_id, user_id):
         raise project_access_denied()
 
     return project
@@ -61,8 +62,8 @@ async def list_tasks(
     Supports JWT or API Key authentication.
     Returns tasks ordered by status and position, including subtasks.
     """
-    # Verify project ownership
-    await verify_project_ownership(project_id, current_user.id, db)
+    # Verify project access
+    await verify_project_access(project_id, current_user.id, db)
 
     # Get tasks
     result = await db.execute(
@@ -140,8 +141,8 @@ async def create_task(
     Supports JWT or API Key authentication.
     Task is appended to the end of its status column.
     """
-    # Verify project ownership
-    await verify_project_ownership(project_id, current_user.id, db)
+    # Verify project access
+    await verify_project_access(project_id, current_user.id, db)
 
     # Get the next position for this status
     max_position_result = await db.execute(
@@ -205,7 +206,7 @@ async def get_task(
         raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(task.project_id, current_user.id, db)
+    await verify_project_access(task.project_id, current_user.id, db)
 
     # Get subtasks
     subtasks_result = await db.execute(
@@ -271,7 +272,7 @@ async def update_task(
         raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(task.project_id, current_user.id, db)
+    await verify_project_access(task.project_id, current_user.id, db)
 
     # Update fields if provided
     if task_data.title is not None:
@@ -329,7 +330,7 @@ async def update_task_status(
         raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(task.project_id, current_user.id, db)
+    await verify_project_access(task.project_id, current_user.id, db)
 
     # Get the next position for the new status
     max_position_result = await db.execute(
@@ -389,7 +390,7 @@ async def reorder_task(
         raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(task.project_id, current_user.id, db)
+    await verify_project_access(task.project_id, current_user.id, db)
 
     # Update status if provided
     if reorder_data.status is not None:
@@ -439,7 +440,7 @@ async def delete_task(
         raise task_not_found()
 
     # Verify project ownership
-    await verify_project_ownership(task.project_id, current_user.id, db)
+    await verify_project_access(task.project_id, current_user.id, db)
 
     # Soft delete
     task.deleted_at = datetime.now(UTC)

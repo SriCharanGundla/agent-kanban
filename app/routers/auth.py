@@ -1,5 +1,6 @@
 """Authentication Router"""
 
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import CurrentUser
 from app.exceptions import email_already_exists, invalid_credentials
+from app.models.project_member import MembershipStatus, ProjectMember
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserResponse, UserUpdate
 from app.services.auth import create_access_token, hash_password, verify_password
@@ -52,6 +54,26 @@ async def register(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    # Auto-join pending invitations that match this email
+    result = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.email == user_data.email,
+            ProjectMember.status == MembershipStatus.pending,
+        )
+    )
+    pending_invitations = result.scalars().all()
+
+    if pending_invitations:
+        now = datetime.now(UTC)
+        for invitation in pending_invitations:
+            # Only accept non-expired invitations
+            if invitation.expires_at > now:
+                invitation.user_id = new_user.id
+                invitation.status = MembershipStatus.accepted
+                invitation.accepted_at = now
+
+        await db.commit()
 
     return new_user
 

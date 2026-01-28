@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # Application
     API_V1_PREFIX: str = "/api/v1"
     CORS_ORIGINS: list[str] = ["http://localhost:7654"]
+    FRONTEND_URL: str = "http://localhost:7654"  # For generating invitation links
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = False  # Set to False to disable SQL query logging
 

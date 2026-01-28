@@ -11,6 +11,14 @@ from app.schemas.project import (
     ProjectUpdate,
     ProjectWithStats,
 )
+from app.schemas.project_member import (
+    AcceptInvitationResponse,
+    InviteMemberRequest,
+    InviteMemberResponse,
+    PendingInvitationResponse,
+    ProjectMemberResponse,
+    UpdateMemberRoleRequest,
+)
 from app.schemas.subtask import (
     SubtaskCreate,
     SubtaskResponse,
@@ -48,6 +56,13 @@ __all__ = [
     "ProjectUpdate",
     "ProjectResponse",
     "ProjectWithStats",
+    # Project Member schemas
+    "InviteMemberRequest",
+    "InviteMemberResponse",
+    "ProjectMemberResponse",
+    "UpdateMemberRoleRequest",
+    "PendingInvitationResponse",
+    "AcceptInvitationResponse",
     # Task schemas
     "TaskCreate",
     "TaskUpdate",

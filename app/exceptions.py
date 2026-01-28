@@ -36,6 +36,16 @@ class ErrorCode(str, Enum):
     SUBTASK_NOT_FOUND = "SUBTASK_NOT_FOUND"
     SUBTASK_ACCESS_DENIED = "SUBTASK_ACCESS_DENIED"
 
+    # Invitations & Members
+    INVITATION_EXPIRED = "INVITATION_EXPIRED"
+    INVITATION_NOT_FOUND = "INVITATION_NOT_FOUND"
+    INVITATION_ALREADY_SENT = "INVITATION_ALREADY_SENT"
+    EMAIL_MISMATCH = "EMAIL_MISMATCH"
+    ALREADY_MEMBER = "ALREADY_MEMBER"
+    LAST_OWNER = "LAST_OWNER"
+    CANNOT_REMOVE_CREATOR = "CANNOT_REMOVE_CREATOR"
+    MEMBER_NOT_FOUND = "MEMBER_NOT_FOUND"
+
     # Validation
     VALIDATION_ERROR = "VALIDATION_ERROR"
 
@@ -187,4 +197,68 @@ def subtask_access_denied() -> AppException:
     return AppException(
         status_code=status.HTTP_403_FORBIDDEN,
         code=ErrorCode.SUBTASK_ACCESS_DENIED,
+    )
+
+
+def invitation_expired() -> AppException:
+    """Invitation has expired"""
+    return AppException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code=ErrorCode.INVITATION_EXPIRED,
+    )
+
+
+def invitation_not_found() -> AppException:
+    """Invitation not found or already accepted"""
+    return AppException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code=ErrorCode.INVITATION_NOT_FOUND,
+    )
+
+
+def invitation_already_sent() -> AppException:
+    """An invitation has already been sent to this email"""
+    return AppException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code=ErrorCode.INVITATION_ALREADY_SENT,
+    )
+
+
+def email_mismatch() -> AppException:
+    """Invitation email doesn't match current user's email"""
+    return AppException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        code=ErrorCode.EMAIL_MISMATCH,
+    )
+
+
+def already_member() -> AppException:
+    """User is already a member of this project"""
+    return AppException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code=ErrorCode.ALREADY_MEMBER,
+    )
+
+
+def last_owner() -> AppException:
+    """Cannot demote the last owner"""
+    return AppException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code=ErrorCode.LAST_OWNER,
+    )
+
+
+def cannot_remove_creator() -> AppException:
+    """Cannot remove the original project creator"""
+    return AppException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        code=ErrorCode.CANNOT_REMOVE_CREATOR,
+    )
+
+
+def member_not_found() -> AppException:
+    """Member not found"""
+    return AppException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code=ErrorCode.MEMBER_NOT_FOUND,
     )

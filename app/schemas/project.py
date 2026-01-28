@@ -38,3 +38,5 @@ class ProjectWithStats(ProjectResponse):
 
     task_count: int = Field(..., description="Total number of tasks")
     done_count: int = Field(..., description="Number of completed tasks")
+    user_role: str | None = Field(None, description="User's role in this project ('owner' or 'member')")
+    member_count: int = Field(0, description="Total number of members (including owner)")
