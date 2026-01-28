@@ -1,11 +1,16 @@
 import { ApiError, ErrorCode } from "./errors";
 import type {
+  AcceptInvitationResponse,
   ApiKeyCreate,
   ApiKeyCreated,
   ApiKey,
   AuthTokens,
+  InviteMemberRequest,
+  InviteMemberResponse,
+  PendingInvitation,
   Project,
   ProjectCreate,
+  ProjectMember,
   ProjectUpdate,
   ProjectWithStats,
   SubtaskCreate,
@@ -16,6 +21,7 @@ import type {
   TaskReorder,
   TaskStatusUpdate,
   TaskUpdate,
+  UpdateMemberRoleRequest,
   User,
   UserCreate,
   UserLogin,
@@ -340,6 +346,68 @@ export const apiKeysApi = {
 
   delete: async (id: string): Promise<void> => {
     return apiFetch<void>(`/api-keys/${id}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+// ============================================================================
+// Project Members API
+// ============================================================================
+
+export const membersApi = {
+  list: async (projectId: string): Promise<ProjectMember[]> => {
+    return apiFetch<ProjectMember[]>(`/projects/${projectId}/members`);
+  },
+
+  invite: async (
+    projectId: string,
+    data: InviteMemberRequest
+  ): Promise<InviteMemberResponse> => {
+    return apiFetch<InviteMemberResponse>(`/projects/${projectId}/members`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateRole: async (
+    projectId: string,
+    memberId: string,
+    data: UpdateMemberRoleRequest
+  ): Promise<ProjectMember> => {
+    return apiFetch<ProjectMember>(
+      `/projects/${projectId}/members/${memberId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  remove: async (projectId: string, memberId: string): Promise<void> => {
+    return apiFetch<void>(`/projects/${projectId}/members/${memberId}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+// ============================================================================
+// Invitations API
+// ============================================================================
+
+export const invitationsApi = {
+  list: async (): Promise<PendingInvitation[]> => {
+    return apiFetch<PendingInvitation[]>("/invitations");
+  },
+
+  accept: async (token: string): Promise<AcceptInvitationResponse> => {
+    return apiFetch<AcceptInvitationResponse>(`/invitations/${token}/accept`, {
+      method: "POST",
+    });
+  },
+
+  decline: async (token: string): Promise<void> => {
+    return apiFetch<void>(`/invitations/${token}`, {
       method: "DELETE",
     });
   },

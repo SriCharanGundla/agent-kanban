@@ -31,6 +31,15 @@ export enum ErrorCode {
   SUBTASK_NOT_FOUND = "SUBTASK_NOT_FOUND",
   SUBTASK_ACCESS_DENIED = "SUBTASK_ACCESS_DENIED",
 
+  // Invitations
+  INVITATION_EXPIRED = "INVITATION_EXPIRED",
+  INVITATION_NOT_FOUND = "INVITATION_NOT_FOUND",
+  INVITATION_ALREADY_SENT = "INVITATION_ALREADY_SENT",
+  EMAIL_MISMATCH = "EMAIL_MISMATCH",
+  ALREADY_MEMBER = "ALREADY_MEMBER",
+  LAST_OWNER = "LAST_OWNER",
+  CANNOT_REMOVE_CREATOR = "CANNOT_REMOVE_CREATOR",
+
   // Validation
   VALIDATION_ERROR = "VALIDATION_ERROR",
 
@@ -80,6 +89,22 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   [ErrorCode.SUBTASK_NOT_FOUND]:
     "Subtask not found. It may have been deleted.",
   [ErrorCode.SUBTASK_ACCESS_DENIED]: "You don't have access to this subtask.",
+
+  // Invitations
+  [ErrorCode.INVITATION_EXPIRED]:
+    "This invitation has expired. Please contact the project owner for a new invitation.",
+  [ErrorCode.INVITATION_NOT_FOUND]:
+    "Invitation not found or already accepted.",
+  [ErrorCode.INVITATION_ALREADY_SENT]:
+    "An invitation has already been sent to this email address.",
+  [ErrorCode.EMAIL_MISMATCH]:
+    "This invitation is for a different email address. Please log in with the correct account.",
+  [ErrorCode.ALREADY_MEMBER]:
+    "You are already a member of this project.",
+  [ErrorCode.LAST_OWNER]:
+    "Cannot demote the last owner. Promote another member to owner first.",
+  [ErrorCode.CANNOT_REMOVE_CREATOR]:
+    "Cannot remove the original project creator.",
 
   // Validation
   [ErrorCode.VALIDATION_ERROR]: "Please check your input and try again.",

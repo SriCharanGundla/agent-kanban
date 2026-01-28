@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,15 @@ import { ApiError, ErrorCode } from "@/lib/errors";
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  
+  // Get redirect URL from query params (with security validation)
+  const rawRedirect = searchParams.get("redirect");
+  const redirectTo =
+    rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+      ? rawRedirect
+      : "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,8 +57,8 @@ export function LoginForm() {
 
     try {
       await login({ email, password });
-      toast.success("Welcome back! Redirecting to dashboard...");
-      navigate("/dashboard");
+      toast.success("Welcome back!");
+      navigate(redirectTo);
     } catch (error) {
       // Handle ApiError with structured error codes
       if (error instanceof ApiError) {

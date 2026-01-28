@@ -54,6 +54,8 @@ export interface ProjectUpdate {
 export interface ProjectWithStats extends Project {
   task_count: number;
   done_count: number;
+  user_role?: ProjectRole; // User's role in this project (if member)
+  member_count?: number; // Number of members in this project
 }
 
 // ============================================================================
@@ -189,4 +191,67 @@ export interface AsyncState<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
+}
+
+// ============================================================================
+// Project Collaboration Types
+// ============================================================================
+
+export type ProjectRole = "owner" | "member";
+
+export type MembershipStatus = "pending" | "accepted";
+
+export interface UserBasic {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
+export interface ProjectBasic {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+export interface ProjectMember {
+  id: string;
+  project_id: string;
+  user_id: string | null;
+  email: string;
+  role: ProjectRole;
+  status: MembershipStatus;
+  invited_by: UserBasic;
+  user: UserBasic | null;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+}
+
+export interface InviteMemberRequest {
+  email: string;
+  role?: ProjectRole;
+}
+
+export interface InviteMemberResponse {
+  member: ProjectMember;
+  invitation_link: string;
+}
+
+export interface UpdateMemberRoleRequest {
+  role: ProjectRole;
+}
+
+export interface PendingInvitation {
+  id: string;
+  token: string;
+  project: ProjectBasic;
+  inviter: UserBasic;
+  role: ProjectRole;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface AcceptInvitationResponse {
+  project_id: string;
+  message: string;
 }

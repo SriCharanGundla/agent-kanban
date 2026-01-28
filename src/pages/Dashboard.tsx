@@ -3,9 +3,11 @@ import { toast } from "sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { NewProjectModal } from "@/components/projects/NewProjectModal";
+import { PendingInvitationsBanner } from "@/components/invitations/PendingInvitationsBanner";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useInvitations } from "@/hooks/useInvitations";
 import { projectsApi } from "@/lib/api";
 import type { ProjectWithStats } from "@/types";
 
@@ -13,6 +15,9 @@ export function Dashboard() {
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
+  
+  // Fetch pending invitations
+  const { invitations, isLoading: invitationsLoading, accept, decline, refresh } = useInvitations();
 
   const fetchData = async () => {
     try {
@@ -47,9 +52,27 @@ export function Dashboard() {
     };
   };
 
+  const handleAcceptInvitation = async (token: string) => {
+    const projectId = await accept(token);
+    if (projectId) {
+      // Refresh projects list after accepting invitation
+      fetchData();
+    }
+    return projectId;
+  };
+
   return (
     <AppLayout title="Dashboard">
       <div className="space-y-6">
+        {/* Pending Invitations Banner */}
+        {!invitationsLoading && invitations.length > 0 && (
+          <PendingInvitationsBanner
+            invitations={invitations}
+            onAccept={handleAcceptInvitation}
+            onDecline={decline}
+          />
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold">Your Projects</h2>

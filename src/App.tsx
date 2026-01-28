@@ -12,6 +12,7 @@ import { Register } from "@/pages/Register";
 import { Dashboard } from "@/pages/Dashboard";
 import { ProjectBoard } from "@/pages/ProjectBoard";
 import { Settings } from "@/pages/Settings";
+import { AcceptInvitation } from "@/pages/AcceptInvitation";
 
 export function App() {
   return (
@@ -44,6 +45,9 @@ export function App() {
               </PublicRoute>
             }
           />
+
+          {/* Invitation Route - handles auth check internally */}
+          <Route path="/invitations/:token" element={<AcceptInvitation />} />
 
           {/* Protected Routes */}
           <Route
