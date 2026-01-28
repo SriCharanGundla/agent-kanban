@@ -25,6 +25,7 @@ from app.models.project import Project
 from app.models.project_member import MembershipStatus, ProjectMember, ProjectRole
 from app.models.user import User
 from app.schemas.project_member import (
+    AssigneeResponse,
     InviteMemberRequest,
     InviteMemberResponse,
     ProjectMemberResponse,
@@ -88,6 +89,72 @@ async def list_project_members(
     members = result.scalars().all()
 
     return members
+
+
+@router.get("/projects/{project_id}/assignees", response_model=list[AssigneeResponse])
+async def list_project_assignees(
+    project_id: UUID,
+    current_user: CurrentUserFlexible,
+    db: AsyncSession = Depends(get_db),
+) -> list[AssigneeResponse]:
+    """
+    List all users who can be assigned to tasks in this project.
+    
+    Returns the project owner plus all accepted members.
+    Sorted alphabetically by full_name.
+    """
+    # Verify project exists
+    result = await db.execute(
+        select(Project)
+        .options(selectinload(Project.owner))
+        .where(
+            Project.id == project_id,
+            Project.deleted_at.is_(None),
+        )
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise project_not_found()
+
+    # Check if user has access to the project
+    from app.services.project_access import can_access_project
+    if not await can_access_project(db, project_id, current_user.id):
+        raise project_access_denied()
+
+    # Start with the project owner
+    assignees_dict = {
+        project.owner.id: AssigneeResponse(
+            id=project.owner.id,
+            full_name=project.owner.full_name,
+            email=project.owner.email,
+        )
+    }
+
+    # Get all accepted members with user data
+    result = await db.execute(
+        select(ProjectMember)
+        .where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.status == MembershipStatus.accepted,
+            ProjectMember.user_id.is_not(None),
+        )
+        .options(selectinload(ProjectMember.user))
+    )
+    members = result.scalars().all()
+
+    # Add accepted members (dedupe by user_id in case owner is also in members)
+    for member in members:
+        if member.user and member.user_id not in assignees_dict:
+            assignees_dict[member.user_id] = AssigneeResponse(
+                id=member.user.id,
+                full_name=member.user.full_name,
+                email=member.user.email,
+            )
+
+    # Convert to list and sort alphabetically by full_name
+    assignees_list = sorted(assignees_dict.values(), key=lambda a: a.full_name.lower())
+
+    return assignees_list
 
 
 @router.post("/projects/{project_id}/members", response_model=InviteMemberResponse)

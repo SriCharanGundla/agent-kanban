@@ -3,14 +3,15 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import CurrentUserFlexible
 from app.exceptions import project_access_denied, project_not_found, task_not_found
 from app.models.project import Project
+from app.models.project_member import MembershipStatus, ProjectMember
 from app.models.subtask import Subtask
 from app.models.task import Task
 from app.schemas.subtask import SubtaskResponse
@@ -48,6 +49,26 @@ async def verify_project_access(
     return project
 
 
+async def verify_assignee_is_member(
+    project_id: UUID, assignee_id: UUID, db: AsyncSession
+) -> None:
+    """Helper function to verify assignee is an accepted member of the project"""
+    result = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == assignee_id,
+            ProjectMember.status == MembershipStatus.accepted,
+        )
+    )
+    member = result.scalar_one_or_none()
+
+    if member is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Assignee must be an accepted member of the project",
+        )
+
+
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskWithSubtasks])
 async def list_tasks(
     project_id: UUID,
@@ -67,7 +88,6 @@ async def list_tasks(
 
     # Get tasks with assignee relationship
     from sqlalchemy.orm import selectinload
-    from app.models.user import User
     
     result = await db.execute(
         select(Task)
@@ -107,7 +127,7 @@ async def list_tasks(
                 priority=task.priority,
                 position=task.position,
                 assignee_id=task.assignee_id,
-                assignee_name=task.assignee.name if task.assignee else None,
+                assignee_name=task.assignee.full_name if task.assignee else None,
                 created_at=task.created_at,
                 updated_at=task.updated_at,
                 subtasks=[
@@ -161,6 +181,10 @@ async def create_task(
     max_position = max_position_result.scalar_one()
     next_position = max_position + 1
 
+    # Validate assignee is a project member if provided
+    if task_data.assignee_id is not None:
+        await verify_assignee_is_member(project_id, task_data.assignee_id, db)
+
     # Create the task
     new_task = Task(
         project_id=project_id,
@@ -169,6 +193,7 @@ async def create_task(
         status=task_data.status,
         priority=task_data.priority,
         position=next_position,
+        assignee_id=task_data.assignee_id,
     )
 
     db.add(new_task)
@@ -187,7 +212,7 @@ async def create_task(
         priority=new_task.priority,
         position=new_task.position,
         assignee_id=new_task.assignee_id,
-        assignee_name=new_task.assignee.name if new_task.assignee else None,
+        assignee_name=new_task.assignee.full_name if new_task.assignee else None,
         created_at=new_task.created_at,
         updated_at=new_task.updated_at,
     )
@@ -244,7 +269,7 @@ async def get_task(
         priority=task.priority,
         position=task.position,
         assignee_id=task.assignee_id,
-        assignee_name=task.assignee.name if task.assignee else None,
+        assignee_name=task.assignee.full_name if task.assignee else None,
         created_at=task.created_at,
         updated_at=task.updated_at,
         subtasks=[
@@ -302,7 +327,10 @@ async def update_task(
         task.priority = task_data.priority
     if task_data.position is not None:
         task.position = task_data.position
-    if task_data.assignee_id is not None:
+    if "assignee_id" in task_data.model_fields_set:
+        # Validate assignee is a project member if setting to non-null value
+        if task_data.assignee_id is not None:
+            await verify_assignee_is_member(task.project_id, task_data.assignee_id, db)
         task.assignee_id = task_data.assignee_id
 
     task.updated_at = datetime.now(UTC)
@@ -322,7 +350,7 @@ async def update_task(
         priority=task.priority,
         position=task.position,
         assignee_id=task.assignee_id,
-        assignee_name=task.assignee.name if task.assignee else None,
+        assignee_name=task.assignee.full_name if task.assignee else None,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -386,7 +414,7 @@ async def update_task_status(
         priority=task.priority,
         position=task.position,
         assignee_id=task.assignee_id,
-        assignee_name=task.assignee.name if task.assignee else None,
+        assignee_name=task.assignee.full_name if task.assignee else None,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -405,6 +433,10 @@ async def reorder_task(
     Supports JWT or API Key authentication.
     If status is provided, task is moved to that column at the specified position.
     Position is used for ordering within the status column.
+    
+    This endpoint properly handles position shifting to prevent collisions:
+    - Same-column: shifts tasks between old and new position
+    - Cross-column: fills gap in source column, makes room in destination
     """
     # Get the task
     result = await db.execute(
@@ -421,12 +453,77 @@ async def reorder_task(
     # Verify project ownership
     await verify_project_access(task.project_id, current_user.id, db)
 
-    # Update status if provided
-    if reorder_data.status is not None:
-        task.status = reorder_data.status
+    # Store original position and status before any changes
+    old_status = task.status
+    old_position = task.position
+    new_status = reorder_data.status if reorder_data.status is not None else old_status
+    new_position = reorder_data.position
 
-    # Update position
-    task.position = reorder_data.position
+    # Determine if this is a same-column or cross-column move
+    is_same_column = old_status == new_status
+    
+    if is_same_column:
+        # Same-column reorder: shift tasks between old and new position
+        if new_position < old_position:
+            # Moving up: shift tasks down to make room
+            # Tasks at [new_position, old_position) increment by 1
+            await db.execute(
+                update(Task)
+                .where(
+                    Task.project_id == task.project_id,
+                    Task.status == old_status,
+                    Task.position >= new_position,
+                    Task.position < old_position,
+                    Task.id != task_id,
+                    Task.deleted_at.is_(None),
+                )
+                .values(position=Task.position + 1)
+            )
+        elif new_position > old_position:
+            # Moving down: shift tasks up to fill gap
+            # Tasks at (old_position, new_position] decrement by 1
+            await db.execute(
+                update(Task)
+                .where(
+                    Task.project_id == task.project_id,
+                    Task.status == old_status,
+                    Task.position > old_position,
+                    Task.position <= new_position,
+                    Task.id != task_id,
+                    Task.deleted_at.is_(None),
+                )
+                .values(position=Task.position - 1)
+            )
+        # If new_position == old_position, no shifting needed
+    else:
+        # Cross-column move
+        # 1. Fill gap in source column: decrement positions after old_position
+        await db.execute(
+            update(Task)
+            .where(
+                Task.project_id == task.project_id,
+                Task.status == old_status,
+                Task.position > old_position,
+                Task.deleted_at.is_(None),
+            )
+            .values(position=Task.position - 1)
+        )
+        
+        # 2. Make room in destination column: increment positions at/after new_position
+        await db.execute(
+            update(Task)
+            .where(
+                Task.project_id == task.project_id,
+                Task.status == new_status,
+                Task.position >= new_position,
+                Task.deleted_at.is_(None),
+            )
+            .values(position=Task.position + 1)
+        )
+
+    # Update the moved task's status and position
+    task.status = new_status
+    task.position = new_position
     task.updated_at = datetime.now(UTC)
 
     await db.commit()
@@ -444,7 +541,7 @@ async def reorder_task(
         priority=task.priority,
         position=task.position,
         assignee_id=task.assignee_id,
-        assignee_name=task.assignee.name if task.assignee else None,
+        assignee_name=task.assignee.full_name if task.assignee else None,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )

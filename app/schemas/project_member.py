@@ -88,3 +88,13 @@ class AcceptInvitationResponse(BaseModel):
 
     project_id: UUID = Field(..., description="ID of the project joined")
     message: str = Field(default="Invitation accepted successfully")
+
+
+class AssigneeResponse(BaseModel):
+    """Schema for assignable users in a project"""
+
+    id: UUID
+    full_name: str
+    email: str
+
+    model_config = {"from_attributes": True}
