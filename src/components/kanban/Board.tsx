@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, User } from "lucide-react";
 import { toast } from "sonner";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
@@ -26,7 +26,7 @@ interface BoardProps {
 }
 
 // Adapter type: Map Task to KanbanItemProps format
-interface KanbanTask {
+interface KanbanTask extends Record<string, unknown> {
   id: string;
   name: string;      // maps to task.title
   column: string;    // maps to task.status
