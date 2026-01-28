@@ -162,10 +162,10 @@ export function Dashboard() {
             ))}
             {/* New Project Card */}
             <Card
-              className="flex cursor-pointer items-center justify-center border-dashed transition-colors hover:bg-accent/50"
+              className="flex cursor-pointer items-center justify-center border-dashed transition-colors hover:bg-accent/50 min-h-[200px]"
               onClick={() => setNewProjectModalOpen(true)}
             >
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <CardContent className="flex flex-col items-center justify-center py-6 text-center">
                 <div className="text-5xl mb-2">➕</div>
                 <h3 className="font-semibold">New Project</h3>
                 <p className="text-sm text-muted-foreground">

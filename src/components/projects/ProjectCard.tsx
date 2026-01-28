@@ -38,7 +38,7 @@ export function ProjectCard({ project, taskStats }: ProjectCardProps) {
 
   return (
     <Link to={`/projects/${project.id}`}>
-      <Card className="transition-colors hover:bg-accent/50">
+      <Card className="transition-colors hover:bg-accent/50 min-h-[200px]">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="space-y-1 flex-1">

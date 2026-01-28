@@ -6,9 +6,16 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
+  closestCenter,
 } from "@dnd-kit/core";
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import type { 
+  DragEndEvent, 
+  DragStartEvent, 
+  DragOverEvent, 
+  CollisionDetection 
+} from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -34,6 +41,37 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
   { status: "in_progress", label: "In Progress" },
   { status: "done", label: "Done" },
 ];
+
+// Custom collision detection that prioritizes column droppables for empty columns
+const customCollisionDetection: CollisionDetection = (args) => {
+  // First check pointer intersections
+  const pointerCollisions = pointerWithin(args);
+  
+  // Find if we're over a column (status droppable)
+  const columnIds = COLUMNS.map(c => c.status);
+  const columnCollision = pointerCollisions.find(
+    (collision) => columnIds.includes(collision.id as TaskStatus)
+  );
+  
+  if (columnCollision) {
+    // Check for task collisions within that column area
+    const taskContainers = args.droppableContainers.filter(
+      (container) => !columnIds.includes(container.id as TaskStatus)
+    );
+    
+    // Use closestCenter to find nearest task, even when hovering in gaps
+    const taskCollisions = closestCenter({
+      ...args,
+      droppableContainers: taskContainers,
+    });
+    
+    // Return task collision if found, otherwise return column collision
+    return taskCollisions.length > 0 ? taskCollisions : [columnCollision];
+  }
+  
+  // Fallback to rect intersection for edge cases
+  return rectIntersection(args);
+};
 
 export function Board({
   tasks,
@@ -92,105 +130,113 @@ export function Board({
     setActiveTask(task || null);
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
-    setActiveTask(null);
-
+    
     if (!over) return;
-
+    
     const activeTaskId = active.id as string;
     const activeTaskData = tasks.find((t) => t.id === activeTaskId);
     if (!activeTaskData) return;
+    
+    // Determine target column
+    let targetStatus: TaskStatus;
+    const isColumnDrop = COLUMNS.some((c) => c.status === over.id);
+    
+    if (isColumnDrop) {
+      targetStatus = over.id as TaskStatus;
+    } else {
+      const overTask = tasks.find((t) => t.id === over.id);
+      if (!overTask) return;
+      targetStatus = overTask.status;
+    }
+    
+    // If moving to different column, update optimistically during drag
+    if (activeTaskData.status !== targetStatus) {
+      onTaskUpdate({
+        ...activeTaskData,
+        status: targetStatus,
+        // Set position to end of target column temporarily
+        position: tasksByStatus[targetStatus].length,
+      });
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    // Store original task data BEFORE clearing activeTask
+    const originalTaskData = activeTask;
+    setActiveTask(null);
+
+    if (!over || !originalTaskData) return;
+
+    const activeTaskId = active.id as string;
 
     // Determine target column and position
     let targetStatus: TaskStatus;
     let targetIndex: number;
 
-    // Check if dropped directly on a column droppable or on a task
     const isColumnDrop = COLUMNS.some((c) => c.status === over.id);
 
     if (isColumnDrop) {
-      // Dropped directly on column background
       targetStatus = over.id as TaskStatus;
-      targetIndex = tasksByStatus[targetStatus].length;
+      targetIndex = tasksByStatus[targetStatus].filter(t => t.id !== activeTaskId).length;
     } else {
-      // Dropped on a task - get the container from sortable context
-      const overTaskId = over.id as string;
-      const overTask = tasks.find((t) => t.id === overTaskId);
-      
+      const overTask = tasks.find((t) => t.id === over.id);
       if (!overTask) return;
       
       targetStatus = overTask.status;
-      const tasksInTargetColumn = tasksByStatus[targetStatus];
-      const overTaskIndex = tasksInTargetColumn.findIndex((t) => t.id === overTaskId);
-      
-      // Insert at the over task's position
-      targetIndex = overTaskIndex >= 0 ? overTaskIndex : tasksInTargetColumn.length;
+      // Filter out the dragged task to get accurate index
+      const tasksInColumn = tasksByStatus[targetStatus].filter(t => t.id !== activeTaskId);
+      const overIndex = tasksInColumn.findIndex((t) => t.id === over.id);
+      targetIndex = overIndex >= 0 ? overIndex : tasksInColumn.length;
     }
 
-    const tasksInTargetColumn = tasksByStatus[targetStatus];
+    // Get current state of the task (may have been updated by onDragOver)
+    const currentTaskData = tasks.find((t) => t.id === activeTaskId);
+    if (!currentTaskData) return;
     
-    // Check if nothing changed
-    if (activeTaskData.status === targetStatus) {
-      const oldIndex = tasksInTargetColumn.findIndex((t) => t.id === activeTaskId);
-      if (oldIndex === targetIndex || (oldIndex === targetIndex - 1)) {
-        // Same position or adjacent (no real change)
+    const sourceStatus = originalTaskData.status; // Use ORIGINAL status before drag
+    const isSameColumn = sourceStatus === targetStatus;
+
+    // Skip if dropped in same position
+    if (isSameColumn) {
+      const tasksInColumn = tasksByStatus[targetStatus];
+      const currentIndex = tasksInColumn.findIndex((t) => t.id === activeTaskId);
+      if (currentIndex === targetIndex || currentIndex === targetIndex - 1) {
         return;
       }
     }
 
-    // Calculate new positions for all affected tasks
-    const isSameColumn = activeTaskData.status === targetStatus;
+    // Calculate and apply position updates
     let updatedTasks: Task[] = [];
-
+    
     if (isSameColumn) {
-      // Reorder within same column
-      const oldIndex = tasksInTargetColumn.findIndex((t) => t.id === activeTaskId);
-      const reorderedTasks = arrayMove(tasksInTargetColumn, oldIndex, targetIndex);
-      
-      // Update positions for all tasks in this column
-      updatedTasks = reorderedTasks.map((task, index) => ({
-        ...task,
-        position: index,
-      }));
+      const tasksInColumn = [...tasksByStatus[targetStatus]];
+      const oldIndex = tasksInColumn.findIndex((t) => t.id === activeTaskId);
+      const reordered = arrayMove(tasksInColumn, oldIndex, targetIndex);
+      updatedTasks = reordered.map((task, index) => ({ ...task, position: index }));
     } else {
-      // Move to different column
-      const sourceColumn = tasksByStatus[activeTaskData.status];
-      const targetColumn = [...tasksInTargetColumn];
-      
-      // Insert task at target position
-      targetColumn.splice(targetIndex, 0, {
-        ...activeTaskData,
-        status: targetStatus,
-        position: targetIndex,
-      });
-      
-      // Update positions for target column tasks
-      const updatedTargetTasks = targetColumn.map((task, index) => ({
-        ...task,
-        position: index,
-      }));
-      
-      // Update positions for source column tasks (if needed)
-      const updatedSourceTasks = sourceColumn
+      // Handle cross-column move
+      const sourceColumn = tasksByStatus[sourceStatus]
         .filter((t) => t.id !== activeTaskId)
-        .map((task, index) => ({
-          ...task,
-          position: index,
-        }));
+        .map((task, index) => ({ ...task, position: index }));
       
-      updatedTasks = [...updatedSourceTasks, ...updatedTargetTasks];
+      const targetColumn = [...tasksByStatus[targetStatus].filter(t => t.id !== activeTaskId)];
+      targetColumn.splice(targetIndex, 0, { ...currentTaskData, status: targetStatus });
+      const updatedTarget = targetColumn.map((task, index) => ({ ...task, position: index }));
+      
+      updatedTasks = [...sourceColumn, ...updatedTarget];
     }
 
     // Apply optimistic updates
     updatedTasks.forEach((task) => onTaskUpdate(task));
 
-    // Send API request for the dragged task
+    // API call
     try {
       const result = await tasksApi.reorder(activeTaskId, {
-        position: isSameColumn 
-          ? updatedTasks.find((t) => t.id === activeTaskId)!.position
-          : targetIndex,
+        position: targetIndex,
         status: isSameColumn ? undefined : targetStatus,
       });
       onTaskUpdate(result);
@@ -201,19 +247,17 @@ export function Board({
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to move task";
       toast.error(message);
-      
-      // Rollback all optimistic updates
-      onTaskUpdate(activeTaskData);
-      // Note: This rollback is partial - ideally we'd restore all affected tasks
-      // For full correctness, consider maintaining a snapshot of the previous state
+      // Rollback to original state
+      onTaskUpdate(originalTaskData);
     }
   };
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-4">
@@ -243,6 +287,7 @@ export function Board({
         {selectedTask && (
           <TaskModal
             task={selectedTask}
+            projectId={projectId}
             open={!!selectedTask}
             onOpenChange={(open) => !open && setSelectedTask(null)}
             onTaskUpdate={onTaskUpdate}

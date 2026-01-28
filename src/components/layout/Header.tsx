@@ -1,5 +1,6 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { ModeToggle } from "@/components/mode-toggle";
 
 interface HeaderProps {
   title?: string;
@@ -11,6 +12,9 @@ export function Header({ title }: HeaderProps) {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 h-4" />
       {title && <h1 className="text-lg font-semibold">{title}</h1>}
+      <div className="ml-auto">
+        <ModeToggle />
+      </div>
     </header>
   );
 }

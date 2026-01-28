@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-import { tasksApi, subtasksApi } from "@/lib/api";
+import { tasksApi, subtasksApi, membersApi } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -33,10 +33,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import type { Task, Subtask, TaskStatus, TaskPriority } from "@/types";
+import type { Task, Subtask, TaskStatus, TaskPriority, ProjectMember } from "@/types";
 
 interface TaskModalProps {
   task: Task;
+  projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskUpdate: (task: Task) => void;
@@ -59,6 +60,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 
 export function TaskModal({
   task,
+  projectId,
   open,
   onOpenChange,
   onTaskUpdate,
@@ -68,6 +70,8 @@ export function TaskModal({
   const [description, setDescription] = useState(task.description || "");
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
+  const [assigneeId, setAssigneeId] = useState<string | null>(task.assignee_id);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks || []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [loading, setLoading] = useState(false);
@@ -78,8 +82,21 @@ export function TaskModal({
     setDescription(task.description || "");
     setStatus(task.status);
     setPriority(task.priority);
+    setAssigneeId(task.assignee_id);
     setSubtasks(task.subtasks || []);
   }, [task]);
+
+  // Fetch project members
+  useEffect(() => {
+    if (open && projectId) {
+      membersApi
+        .list(projectId)
+        .then(setMembers)
+        .catch((error) => {
+          console.error("Failed to fetch members:", error);
+        });
+    }
+  }, [open, projectId]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -94,6 +111,7 @@ export function TaskModal({
         description: description.trim() || null,
         status,
         priority,
+        assignee_id: assigneeId,
       });
       updatedTask.subtasks = subtasks;
       onTaskUpdate(updatedTask);
@@ -172,7 +190,7 @@ export function TaskModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Task Details</DialogTitle>
           </DialogHeader>
@@ -188,12 +206,14 @@ export function TaskModal({
               />
             </Field>
 
-            {/* Status and Priority */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Status, Priority, and Assignee */}
+            <div className="grid grid-cols-3 gap-4">
               <Field label="Status">
                 <Select value={status} onValueChange={(val) => setStatus(val as TaskStatus)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>
+                      {STATUS_OPTIONS.find(o => o.value === status)?.label}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {STATUS_OPTIONS.map((option) => (
@@ -208,12 +228,37 @@ export function TaskModal({
               <Field label="Priority">
                 <Select value={priority} onValueChange={(val) => setPriority(val as TaskPriority)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>
+                      {PRIORITY_OPTIONS.find(o => o.value === priority)?.label}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {PRIORITY_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field label="Assignee" helperText="Optional">
+                <Select 
+                  value={assigneeId || "unassigned"} 
+                  onValueChange={(val) => setAssigneeId(val === "unassigned" ? null : val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {assigneeId 
+                        ? members.find(m => m.user?.id === assigneeId)?.user?.full_name || "Unknown"
+                        : "Unassigned"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {members.filter(m => m.user && m.status === "accepted").map((member) => (
+                      <SelectItem key={member.user!.id} value={member.user!.id}>
+                        {member.user!.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>

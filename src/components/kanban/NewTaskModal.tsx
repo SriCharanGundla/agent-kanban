@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { tasksApi } from "@/lib/api";
+import { tasksApi, membersApi } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Task, TaskStatus, TaskPriority } from "@/types";
+import type { Task, TaskStatus, TaskPriority, ProjectMember } from "@/types";
 
 interface NewTaskModalProps {
   open: boolean;
@@ -54,6 +54,8 @@ export function NewTaskModal({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [assigneeId, setAssigneeId] = useState<string | null>(null);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ title?: string }>({});
 
@@ -64,12 +66,25 @@ export function NewTaskModal({
     }
   }, [open, defaultStatus]);
 
+  // Fetch project members
+  useEffect(() => {
+    if (open && projectId) {
+      membersApi
+        .list(projectId)
+        .then(setMembers)
+        .catch((error) => {
+          console.error("Failed to fetch members:", error);
+        });
+    }
+  }, [open, projectId]);
+
   const handleClose = () => {
     if (!loading) {
       setTitle("");
       setDescription("");
       setStatus(defaultStatus);
       setPriority("medium");
+      setAssigneeId(null);
       setErrors({});
       onOpenChange(false);
     }
@@ -104,6 +119,7 @@ export function NewTaskModal({
         description: description.trim() || null,
         status,
         priority,
+        assignee_id: assigneeId,
       });
 
       toast.success("Task created successfully!");
@@ -140,11 +156,13 @@ export function NewTaskModal({
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Field label="Status">
               <Select value={status} onValueChange={(val) => setStatus(val as TaskStatus)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {STATUS_OPTIONS.find(o => o.value === status)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {STATUS_OPTIONS.map((option) => (
@@ -159,12 +177,37 @@ export function NewTaskModal({
             <Field label="Priority">
               <Select value={priority} onValueChange={(val) => setPriority(val as TaskPriority)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {PRIORITY_OPTIONS.find(o => o.value === priority)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {PRIORITY_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field label="Assignee" helperText="Optional">
+              <Select 
+                value={assigneeId || "unassigned"} 
+                onValueChange={(val) => setAssigneeId(val === "unassigned" ? null : val)}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {assigneeId 
+                      ? members.find(m => m.user?.id === assigneeId)?.user?.full_name || "Unknown"
+                      : "Unassigned"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {members.filter(m => m.user && m.status === "accepted").map((member) => (
+                    <SelectItem key={member.user!.id} value={member.user!.id}>
+                      {member.user!.full_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { User } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Task, TaskPriority } from "@/types";
@@ -12,12 +13,24 @@ interface TaskCardProps {
 
 const PRIORITY_STYLES: Record<
   TaskPriority,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+  { label: string; className: string }
 > = {
-  low: { label: "Low", variant: "secondary" },
-  medium: { label: "Medium", variant: "default" },
-  high: { label: "High", variant: "outline" },
-  urgent: { label: "Urgent", variant: "destructive" },
+  low: { 
+    label: "Low", 
+    className: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" 
+  },
+  medium: { 
+    label: "Medium", 
+    className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800" 
+  },
+  high: { 
+    label: "High", 
+    className: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800" 
+  },
+  urgent: { 
+    label: "Urgent", 
+    className: "bg-red-500 text-white border-red-600 dark:bg-red-600 dark:border-red-700" 
+  },
 };
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
@@ -76,17 +89,22 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             <h4 className="text-sm font-medium leading-tight line-clamp-2">
               {task.title}
             </h4>
-            {task.priority !== "medium" && (
-              <Badge variant={priority.variant} className="shrink-0 text-xs">
-                {priority.label}
-              </Badge>
-            )}
+            <Badge className={`shrink-0 text-xs ${priority.className}`}>
+              {priority.label}
+            </Badge>
           </div>
           
           {task.description && (
             <p className="text-xs text-muted-foreground line-clamp-2">
               {task.description}
             </p>
+          )}
+
+          {task.assignee_name && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <User className="h-3 w-3" />
+              <span>{task.assignee_name}</span>
+            </div>
           )}
         </div>
       </CardHeader>

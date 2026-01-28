@@ -74,6 +74,8 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   position: number;
+  assignee_id: string | null;
+  assignee_name: string | null;
   created_at: string;
   updated_at: string;
   subtasks?: Subtask[];
@@ -84,6 +86,7 @@ export interface TaskCreate {
   description?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
+  assignee_id?: string | null;
 }
 
 export interface TaskUpdate {
@@ -92,6 +95,7 @@ export interface TaskUpdate {
   status?: TaskStatus;
   priority?: TaskPriority;
   position?: number;
+  assignee_id?: string | null;
 }
 
 export interface TaskStatusUpdate {
