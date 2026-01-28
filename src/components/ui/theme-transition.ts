@@ -28,7 +28,7 @@ export const useThemeTransition = () => {
       return;
     }
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduce-motion: reduce)').matches;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!('startViewTransition' in document) || prefersReducedMotion) {
       update();
       return;

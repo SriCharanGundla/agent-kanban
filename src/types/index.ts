@@ -245,6 +245,12 @@ export interface UpdateMemberRoleRequest {
   role: ProjectRole;
 }
 
+export interface Assignee {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
 export interface PendingInvitation {
   id: string;
   token: string;

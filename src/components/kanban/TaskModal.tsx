@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-import { tasksApi, subtasksApi, membersApi } from "@/lib/api";
+import { tasksApi, subtasksApi, assigneesApi } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import type { Task, Subtask, TaskStatus, TaskPriority, ProjectMember } from "@/types";
+import type { Task, Subtask, TaskStatus, TaskPriority, Assignee } from "@/types";
 
 interface TaskModalProps {
   task: Task;
@@ -71,7 +71,7 @@ export function TaskModal({
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [assigneeId, setAssigneeId] = useState<string | null>(task.assignee_id);
-  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks || []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [loading, setLoading] = useState(false);
@@ -86,14 +86,14 @@ export function TaskModal({
     setSubtasks(task.subtasks || []);
   }, [task]);
 
-  // Fetch project members
+  // Fetch project assignees
   useEffect(() => {
     if (open && projectId) {
-      membersApi
+      assigneesApi
         .list(projectId)
-        .then(setMembers)
+        .then(setAssignees)
         .catch((error) => {
-          console.error("Failed to fetch members:", error);
+          console.error("Failed to fetch assignees:", error);
         });
     }
   }, [open, projectId]);
@@ -250,15 +250,18 @@ export function TaskModal({
                   <SelectTrigger>
                     <SelectValue>
                       {assigneeId 
-                        ? members.find(m => m.user?.id === assigneeId)?.user?.full_name || "Unknown"
+                        ? assignees.find(a => a.id === assigneeId)?.full_name || "Unknown"
                         : "Unassigned"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {members.filter(m => m.user && m.status === "accepted").map((member) => (
-                      <SelectItem key={member.user!.id} value={member.user!.id}>
-                        {member.user!.full_name}
+                    {assignees.map((assignee) => (
+                      <SelectItem key={assignee.id} value={assignee.id}>
+                        <div className="flex flex-col">
+                          <span>{assignee.full_name}</span>
+                          <span className="text-[10px] text-muted-foreground">{assignee.email}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>

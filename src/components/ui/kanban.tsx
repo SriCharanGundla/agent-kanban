@@ -72,8 +72,8 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        "flex size-full min-h-40 flex-col divide-y overflow-hidden rounded-md border bg-secondary text-xs shadow-sm ring-2 transition-all",
-        isOver ? "ring-primary" : "ring-transparent",
+        "flex size-full min-h-40 flex-col divide-y overflow-hidden border bg-secondary text-xs shadow-sm transition-all",
+        isOver ? "bg-accent/20" : "",
         className,
       )}
       ref={setNodeRef}
@@ -109,7 +109,7 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
       <div style={style} {...listeners} {...attributes} ref={setNodeRef}>
         <Card
           className={cn(
-            "cursor-grab gap-4 rounded-md p-3 shadow-sm",
+            "cursor-grab gap-4 p-3 shadow-sm",
             isDragging && "pointer-events-none cursor-grabbing opacity-30",
             className,
           )}
@@ -121,7 +121,7 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
         <t.In>
           <Card
             className={cn(
-              "cursor-grab gap-4 rounded-md p-3 shadow-sm ring-2 ring-primary",
+              "cursor-grab gap-4 p-3 shadow-sm ring-2 ring-primary",
               isDragging && "cursor-grabbing",
               className,
             )}
@@ -150,11 +150,16 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
   const { data } = useContext(KanbanContext) as KanbanContextProps<T>
   const filteredData = data.filter(item => item.column === props.id)
   const items = filteredData.map(item => item.id)
+  const isEmpty = filteredData.length === 0
 
   return (
     <ScrollArea className="overflow-hidden">
       <SortableContext items={items}>
-        <div className={cn("flex flex-grow flex-col gap-2 p-2", className)} {...props}>
+        <div className={cn(
+          "flex flex-grow flex-col gap-2",
+          !isEmpty && "p-2",
+          className
+        )} {...(props as any)}>
           {filteredData.map(children)}
         </div>
       </SortableContext>
@@ -200,8 +205,17 @@ export const KanbanProvider = <
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
 
   const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor),
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement before drag starts (allows clicks)
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // 250ms hold before drag starts on touch
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor),
   )
 
@@ -248,11 +262,10 @@ export const KanbanProvider = <
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveCardId(null)
 
-    onDragEnd?.(event)
-
     const { active, over } = event
 
     if (!over || active.id === over.id) {
+      onDragEnd?.(event)
       return
     }
 
@@ -264,6 +277,7 @@ export const KanbanProvider = <
     newData = arrayMove(newData, oldIndex, newIndex)
 
     onDataChange?.(newData)
+    onDragEnd?.(event)
   }
 
   const announcements: Announcements = {

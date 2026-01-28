@@ -4,6 +4,7 @@ import type {
   ApiKeyCreate,
   ApiKeyCreated,
   ApiKey,
+  Assignee,
   AuthTokens,
   InviteMemberRequest,
   InviteMemberResponse,
@@ -388,6 +389,16 @@ export const membersApi = {
     return apiFetch<void>(`/projects/${projectId}/members/${memberId}`, {
       method: "DELETE",
     });
+  },
+};
+
+// ============================================================================
+// Assignees API
+// ============================================================================
+
+export const assigneesApi = {
+  list: async (projectId: string): Promise<Assignee[]> => {
+    return apiFetch<Assignee[]>(`/projects/${projectId}/assignees`);
   },
 };
 
