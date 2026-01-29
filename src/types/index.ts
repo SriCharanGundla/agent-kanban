@@ -224,10 +224,10 @@ export interface ProjectMember {
   email: string;
   role: ProjectRole;
   status: MembershipStatus;
-  invited_by: UserBasic;
+  invited_by: UserBasic | null;
   user: UserBasic | null;
   created_at: string;
-  expires_at: string;
+  expires_at: string | null;
   accepted_at: string | null;
 }
 

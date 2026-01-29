@@ -253,7 +253,7 @@ export function MembersTab({
             Pending Invitations ({pendingMembers.length})
           </h4>
           {pendingMembers.map((member) => {
-            const isExpired = new Date(member.expires_at) < new Date();
+            const isExpired = member.expires_at ? new Date(member.expires_at) < new Date() : false;
 
             return (
               <div
@@ -269,7 +269,9 @@ export function MembersTab({
                   <p className="text-xs text-muted-foreground">
                     {isExpired
                       ? "Expired"
-                      : `Expires in ${getTimeUntilExpiry(member.expires_at)}`}
+                      : member.expires_at
+                        ? `Expires in ${getTimeUntilExpiry(member.expires_at)}`
+                        : "No expiration"}
                   </p>
                 </div>
 
