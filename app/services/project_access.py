@@ -158,11 +158,11 @@ async def get_project_member_count(
 ) -> int:
     """
     Get the total number of members in a project.
-    Returns the count of accepted members + 1 for the original owner.
+    Returns the count of accepted members (owner is included as a member).
     """
     from sqlalchemy import func
 
-    # Count accepted members
+    # Count accepted members (owner is now included in the members table)
     result = await db.execute(
         select(func.count(ProjectMember.id)).where(
             ProjectMember.project_id == project_id,
@@ -171,5 +171,4 @@ async def get_project_member_count(
     )
     accepted_count = result.scalar_one()
     
-    # +1 for the original owner (who may or may not be in members table)
-    return accepted_count + 1
+    return accepted_count

@@ -52,7 +52,19 @@ async def verify_project_access(
 async def verify_assignee_is_member(
     project_id: UUID, assignee_id: UUID, db: AsyncSession
 ) -> None:
-    """Helper function to verify assignee is an accepted member of the project"""
+    """Helper function to verify assignee is a project owner or accepted member"""
+    # First check if assignee is the project owner
+    project_result = await db.execute(
+        select(Project).where(
+            Project.id == project_id,
+            Project.owner_id == assignee_id,
+            Project.deleted_at.is_(None),
+        )
+    )
+    if project_result.scalar_one_or_none() is not None:
+        return  # Owner is always a valid assignee
+
+    # Otherwise, check if they're an accepted member
     result = await db.execute(
         select(ProjectMember).where(
             ProjectMember.project_id == project_id,

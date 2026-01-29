@@ -53,10 +53,10 @@ class ProjectMemberResponse(BaseModel):
     email: str
     role: ProjectRole
     status: MembershipStatus
-    invited_by: UserBasic
+    invited_by: UserBasic | None = Field(None, description="User who sent invitation, null for project creator")
     user: UserBasic | None = Field(None, description="User details if accepted")
     created_at: datetime
-    expires_at: datetime
+    expires_at: datetime | None = Field(None, description="Expiration time, null for project creator")
     accepted_at: datetime | None
 
     model_config = {"from_attributes": True}

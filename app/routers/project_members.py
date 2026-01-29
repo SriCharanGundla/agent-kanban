@@ -30,6 +30,7 @@ from app.schemas.project_member import (
     InviteMemberResponse,
     ProjectMemberResponse,
     UpdateMemberRoleRequest,
+    UserBasic,
 )
 from app.services.project_access import is_project_owner
 
@@ -58,7 +59,7 @@ async def list_project_members(
     List all members of a project.
     
     Accessible by any project member (owner or accepted member).
-    Returns all members including pending invitations.
+    Returns all members including the project owner and pending invitations.
     """
     # Verify project exists
     result = await db.execute(
@@ -88,7 +89,7 @@ async def list_project_members(
     )
     members = result.scalars().all()
 
-    return members
+    return [ProjectMemberResponse.model_validate(m) for m in members]
 
 
 @router.get("/projects/{project_id}/assignees", response_model=list[AssigneeResponse])
@@ -170,9 +171,11 @@ async def invite_project_member(
     Only project owners can invite members.
     Generates a unique invitation link that expires in 7 days.
     """
-    # Verify project exists
+    # Verify project exists and load owner
     result = await db.execute(
-        select(Project).where(
+        select(Project)
+        .options(selectinload(Project.owner))
+        .where(
             Project.id == project_id,
             Project.deleted_at.is_(None),
         )
@@ -184,6 +187,10 @@ async def invite_project_member(
     # Check if user is an owner
     if not await is_project_owner(db, project_id, current_user.id):
         raise project_access_denied()
+
+    # Check if trying to invite the project owner
+    if invite_request.email.lower() == project.owner.email.lower():
+        raise already_member()
 
     # Check if email is already invited or is a member
     result = await db.execute(

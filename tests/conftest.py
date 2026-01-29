@@ -208,6 +208,8 @@ async def expired_api_key_headers(test_user: User, test_db: AsyncSession) -> dic
 @pytest.fixture(scope="function")
 async def test_project(test_user: User, test_db: AsyncSession) -> Project:
     """Create a test project"""
+    from app.models.project_member import ProjectMember, ProjectRole, MembershipStatus
+    
     project = Project(
         id=uuid.uuid4(),
         owner_id=test_user.id,
@@ -217,6 +219,22 @@ async def test_project(test_user: User, test_db: AsyncSession) -> Project:
         updated_at=datetime.now(UTC),
     )
     test_db.add(project)
+    await test_db.flush()
+    
+    # Create owner as a project member (matching the API behavior)
+    owner_member = ProjectMember(
+        project_id=project.id,
+        user_id=test_user.id,
+        email=test_user.email,
+        role=ProjectRole.owner,
+        status=MembershipStatus.accepted,
+        invitation_token=None,
+        invited_by_id=None,
+        expires_at=None,
+        accepted_at=datetime.now(UTC),
+    )
+    test_db.add(owner_member)
+    
     await test_db.commit()
     await test_db.refresh(project)
     return project

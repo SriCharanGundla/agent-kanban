@@ -115,7 +115,8 @@ async def list_projects(
         )
         .group_by(ProjectMember.project_id)
     )
-    member_counts_map = {r.project_id: r.count + 1 for r in count_result.all()}
+    # Owner is now included in the members table, so no +1 needed
+    member_counts_map = {r.project_id: r.count for r in count_result.all()}
 
     # Build response using maps
     projects_with_stats = []
@@ -168,6 +169,22 @@ async def create_project(
     )
 
     db.add(new_project)
+    await db.flush()  # Flush to get project.id without committing
+    
+    # Create owner as a project member
+    owner_member = ProjectMember(
+        project_id=new_project.id,
+        user_id=current_user.id,
+        email=current_user.email,
+        role=ProjectRole.owner,
+        status=MembershipStatus.accepted,
+        invitation_token=None,
+        invited_by_id=None,
+        expires_at=None,
+        accepted_at=datetime.now(UTC),
+    )
+    db.add(owner_member)
+    
     await db.commit()
     await db.refresh(new_project)
 

@@ -59,24 +59,24 @@ class ProjectMember(Base):
         nullable=False,
         default=MembershipStatus.pending,
     )
-    invitation_token: Mapped[str] = mapped_column(
+    invitation_token: Mapped[str | None] = mapped_column(
         String(64),
-        nullable=False,
+        nullable=True,
         unique=True,
     )
-    invited_by_id: Mapped[uuid.UUID] = mapped_column(
+    invited_by_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
         ForeignKey("users.id"),
-        nullable=False,
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=False,
         default=datetime.utcnow,
     )
-    expires_at: Mapped[datetime] = mapped_column(
+    expires_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
-        nullable=False,
+        nullable=True,
     )
     accepted_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
@@ -93,7 +93,7 @@ class ProjectMember(Base):
         foreign_keys=[user_id],
         back_populates="project_memberships",
     )
-    invited_by: Mapped["User"] = relationship(
+    invited_by: Mapped["User | None"] = relationship(
         "User",
         foreign_keys=[invited_by_id],
     )
