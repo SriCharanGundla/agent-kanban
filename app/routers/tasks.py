@@ -179,8 +179,8 @@ async def create_task(
     Supports JWT or API Key authentication.
     Task is appended to the end of its status column.
     """
-    # Verify project access
-    await verify_project_access(project_id, current_user.id, db)
+    # Verify project access and get project
+    project = await verify_project_access(project_id, current_user.id, db)
 
     # Get the next position for this status
     max_position_result = await db.execute(
@@ -209,6 +209,11 @@ async def create_task(
     )
 
     db.add(new_task)
+    
+    # Update project timestamp
+    now = datetime.now(UTC)
+    project.updated_at = now
+    
     await db.commit()
     await db.refresh(new_task)
     # Load assignee relationship if exists
@@ -325,8 +330,8 @@ async def update_task(
     if task is None:
         raise task_not_found()
 
-    # Verify project ownership
-    await verify_project_access(task.project_id, current_user.id, db)
+    # Verify project ownership and get project
+    project = await verify_project_access(task.project_id, current_user.id, db)
 
     # Update fields if provided
     if task_data.title is not None:
@@ -345,7 +350,9 @@ async def update_task(
             await verify_assignee_is_member(task.project_id, task_data.assignee_id, db)
         task.assignee_id = task_data.assignee_id
 
-    task.updated_at = datetime.now(UTC)
+    now = datetime.now(UTC)
+    task.updated_at = now
+    project.updated_at = now
 
     await db.commit()
     await db.refresh(task)
@@ -393,8 +400,8 @@ async def update_task_status(
     if task is None:
         raise task_not_found()
 
-    # Verify project ownership
-    await verify_project_access(task.project_id, current_user.id, db)
+    # Verify project ownership and get project
+    project = await verify_project_access(task.project_id, current_user.id, db)
 
     # Get the next position for the new status
     max_position_result = await db.execute(
@@ -409,7 +416,10 @@ async def update_task_status(
     # Update task
     task.status = status_data.status
     task.position = max_position + 1
-    task.updated_at = datetime.now(UTC)
+    
+    now = datetime.now(UTC)
+    task.updated_at = now
+    project.updated_at = now
 
     await db.commit()
     await db.refresh(task)
@@ -462,8 +472,8 @@ async def reorder_task(
     if task is None:
         raise task_not_found()
 
-    # Verify project ownership
-    await verify_project_access(task.project_id, current_user.id, db)
+    # Verify project ownership and get project
+    project = await verify_project_access(task.project_id, current_user.id, db)
 
     # Store original position and status before any changes
     old_status = task.status
@@ -536,7 +546,10 @@ async def reorder_task(
     # Update the moved task's status and position
     task.status = new_status
     task.position = new_position
-    task.updated_at = datetime.now(UTC)
+    
+    now = datetime.now(UTC)
+    task.updated_at = now
+    project.updated_at = now
 
     await db.commit()
     await db.refresh(task)
@@ -582,9 +595,12 @@ async def delete_task(
     if task is None:
         raise task_not_found()
 
-    # Verify project ownership
-    await verify_project_access(task.project_id, current_user.id, db)
+    # Verify project ownership and get project
+    project = await verify_project_access(task.project_id, current_user.id, db)
 
     # Soft delete
-    task.deleted_at = datetime.now(UTC)
+    now = datetime.now(UTC)
+    task.deleted_at = now
+    project.updated_at = now
+    
     await db.commit()

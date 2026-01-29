@@ -19,7 +19,7 @@ from app.services.project_access import can_access_project
 router = APIRouter(tags=["Subtasks"])
 
 
-async def verify_task_ownership(task_id: UUID, user_id: UUID, db: AsyncSession) -> Task:
+async def verify_task_ownership(task_id: UUID, user_id: UUID, db: AsyncSession) -> tuple[Task, Project]:
     """Helper function to verify task exists and user has access to it through project"""
     result = await db.execute(
         select(Task).where(
@@ -36,7 +36,16 @@ async def verify_task_ownership(task_id: UUID, user_id: UUID, db: AsyncSession) 
     if not await can_access_project(db, task.project_id, user_id):
         raise task_access_denied()
 
-    return task
+    # Fetch the project (already verified via can_access_project)
+    result = await db.execute(
+        select(Project).where(
+            Project.id == task.project_id,
+            Project.deleted_at.is_(None),
+        )
+    )
+    project = result.scalar_one()  # Safe - access was already verified
+
+    return task, project
 
 
 @router.get("/tasks/{task_id}/subtasks", response_model=list[SubtaskResponse])
@@ -54,7 +63,7 @@ async def list_subtasks(
     Returns subtasks ordered by position.
     """
     # Verify task ownership
-    await verify_task_ownership(task_id, current_user.id, db)
+    _, _ = await verify_task_ownership(task_id, current_user.id, db)
 
     # Get subtasks
     result = await db.execute(
@@ -97,8 +106,8 @@ async def create_subtask(
     Supports JWT or API Key authentication.
     Subtask is appended to the end of the list.
     """
-    # Verify task ownership
-    await verify_task_ownership(task_id, current_user.id, db)
+    # Verify task ownership and get task and project
+    task, project = await verify_task_ownership(task_id, current_user.id, db)
 
     # Get the next position
     max_position_result = await db.execute(
@@ -118,6 +127,11 @@ async def create_subtask(
     )
 
     db.add(new_subtask)
+    
+    # Update project timestamp
+    now = datetime.now(UTC)
+    project.updated_at = now
+    
     await db.commit()
     await db.refresh(new_subtask)
 
@@ -151,8 +165,8 @@ async def update_subtask(
     if subtask is None:
         raise subtask_not_found()
 
-    # Verify task ownership
-    await verify_task_ownership(subtask.task_id, current_user.id, db)
+    # Verify task ownership and get task and project
+    task, project = await verify_task_ownership(subtask.task_id, current_user.id, db)
 
     # Update fields if provided
     if subtask_data.title is not None:
@@ -162,7 +176,9 @@ async def update_subtask(
     if subtask_data.position is not None:
         subtask.position = subtask_data.position
 
-    subtask.updated_at = datetime.now(UTC)
+    now = datetime.now(UTC)
+    subtask.updated_at = now
+    project.updated_at = now
 
     await db.commit()
     await db.refresh(subtask)
@@ -196,9 +212,14 @@ async def delete_subtask(
     if subtask is None:
         raise subtask_not_found()
 
-    # Verify task ownership
-    await verify_task_ownership(subtask.task_id, current_user.id, db)
+    # Verify task ownership and get task and project
+    task, project = await verify_task_ownership(subtask.task_id, current_user.id, db)
 
     # Hard delete (subtasks don't have soft delete)
     await db.delete(subtask)
+    
+    # Update project timestamp
+    now = datetime.now(UTC)
+    project.updated_at = now
+    
     await db.commit()
