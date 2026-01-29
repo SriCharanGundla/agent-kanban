@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { membersApi } from "@/lib/api";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   Dialog,
   DialogContent,
@@ -108,10 +109,10 @@ export function InviteMemberDialog({
 
   const handleCopy = async () => {
     if (invitationLink) {
-      try {
-        await navigator.clipboard.writeText(invitationLink);
+      const success = await copyToClipboard(invitationLink);
+      if (success) {
         toast.success("Invitation link copied to clipboard!");
-      } catch {
+      } else {
         toast.error("Failed to copy to clipboard");
       }
     }

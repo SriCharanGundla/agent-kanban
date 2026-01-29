@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiKeysApi } from "@/lib/api";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   Dialog,
   DialogContent,
@@ -87,10 +88,10 @@ export function NewApiKeyModal({
 
   const handleCopy = async () => {
     if (createdKey) {
-      try {
-        await navigator.clipboard.writeText(createdKey.key);
+      const success = await copyToClipboard(createdKey.key);
+      if (success) {
         toast.success("API key copied to clipboard!");
-      } catch {
+      } else {
         toast.error("Failed to copy to clipboard");
       }
     }
