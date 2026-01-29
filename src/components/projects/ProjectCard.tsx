@@ -69,7 +69,7 @@ export function ProjectCard({ project, taskStats }: ProjectCardProps) {
           </div>
           <Progress value={completionPercentage} />
           
-          {project.member_count !== undefined && project.member_count > 1 && (
+          {project.member_count !== undefined && project.member_count >= 1 && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
               <Users className="h-3 w-3" />
               <span>{project.member_count} {project.member_count === 1 ? "member" : "members"}</span>

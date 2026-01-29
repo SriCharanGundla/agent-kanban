@@ -109,7 +109,7 @@ export function ProjectBoard() {
             {project.description && (
               <p className="text-muted-foreground">{project.description}</p>
             )}
-            {project.member_count !== undefined && project.member_count > 1 && (
+            {project.member_count !== undefined && project.member_count >= 1 && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground pt-1">
                 <Users className="h-4 w-4" />
                 <span>{project.member_count} {project.member_count === 1 ? "member" : "members"}</span>
