@@ -130,6 +130,60 @@ class TestCreateSubtask:
         )
         assert response.status_code == 401
 
+    async def test_create_subtask_with_description(
+        self, client: AsyncClient, auth_headers: dict[str, str], test_task: Task
+    ):
+        """Test creating subtask with description"""
+        response = await client.post(
+            f"/api/v1/tasks/{test_task.id}/subtasks",
+            headers=auth_headers,
+            json={"title": "Subtask with description", "description": "This is a detailed description"},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["title"] == "Subtask with description"
+        assert data["description"] == "This is a detailed description"
+
+    async def test_create_subtask_without_description(
+        self, client: AsyncClient, auth_headers: dict[str, str], test_task: Task
+    ):
+        """Test creating subtask without description (backward compatibility)"""
+        response = await client.post(
+            f"/api/v1/tasks/{test_task.id}/subtasks",
+            headers=auth_headers,
+            json={"title": "Subtask without description"},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["title"] == "Subtask without description"
+        assert data["description"] is None
+
+    async def test_create_subtask_with_long_description(
+        self, client: AsyncClient, auth_headers: dict[str, str], test_task: Task
+    ):
+        """Test creating subtask with long description"""
+        long_description = "x" * 4999  # Just under the 5000 char limit
+        response = await client.post(
+            f"/api/v1/tasks/{test_task.id}/subtasks",
+            headers=auth_headers,
+            json={"title": "Subtask", "description": long_description},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["description"] == long_description
+
+    async def test_create_subtask_description_too_long(
+        self, client: AsyncClient, auth_headers: dict[str, str], test_task: Task
+    ):
+        """Test creating subtask with description exceeding max length"""
+        too_long_description = "x" * 5001  # Over the 5000 char limit
+        response = await client.post(
+            f"/api/v1/tasks/{test_task.id}/subtasks",
+            headers=auth_headers,
+            json={"title": "Subtask", "description": too_long_description},
+        )
+        assert response.status_code == 422
+
 
 class TestListSubtasks:
     """Test subtask listing endpoint"""
@@ -189,6 +243,47 @@ class TestListSubtasks:
         """Test listing subtasks without authentication"""
         response = await client.get(f"/api/v1/tasks/{test_task.id}/subtasks")
         assert response.status_code == 401
+
+    async def test_list_subtasks_with_descriptions(
+        self, client: AsyncClient, auth_headers: dict[str, str], test_task: Task, test_db: AsyncSession
+    ):
+        """Test listing subtasks includes description field"""
+        # Create subtasks with and without descriptions
+        subtask1 = Subtask(
+            id=uuid.uuid4(),
+            task_id=test_task.id,
+            title="Subtask 1",
+            description="Description 1",
+            is_completed=False,
+            position=0,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        subtask2 = Subtask(
+            id=uuid.uuid4(),
+            task_id=test_task.id,
+            title="Subtask 2",
+            description=None,
+            is_completed=False,
+            position=1,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        test_db.add(subtask1)
+        test_db.add(subtask2)
+        await test_db.commit()
+
+        response = await client.get(
+            f"/api/v1/tasks/{test_task.id}/subtasks",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert data[0]["title"] == "Subtask 1"
+        assert data[0]["description"] == "Description 1"
+        assert data[1]["title"] == "Subtask 2"
+        assert data[1]["description"] is None
 
 
 class TestUpdateSubtask:
@@ -325,6 +420,48 @@ class TestUpdateSubtask:
             json={"title": "Updated"},
         )
         assert response.status_code == 401
+
+    async def test_update_subtask_description(
+        self, client: AsyncClient, auth_headers: dict[str, str], test_subtask: Subtask
+    ):
+        """Test updating subtask description"""
+        response = await client.patch(
+            f"/api/v1/subtasks/{test_subtask.id}",
+            headers=auth_headers,
+            json={"description": "New description"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["description"] == "New description"
+        # Ensure title wasn't changed
+        assert data["title"] == test_subtask.title
+
+    async def test_update_subtask_clear_description(
+        self, client: AsyncClient, auth_headers: dict[str, str], test_task: Task, test_db: AsyncSession
+    ):
+        """Test clearing subtask description by setting it to None"""
+        # Create a subtask with description
+        subtask = Subtask(
+            id=uuid.uuid4(),
+            task_id=test_task.id,
+            title="Subtask",
+            description="Initial description",
+            is_completed=False,
+            position=0,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        test_db.add(subtask)
+        await test_db.commit()
+
+        response = await client.patch(
+            f"/api/v1/subtasks/{subtask.id}",
+            headers=auth_headers,
+            json={"description": None},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["description"] is None
 
 
 class TestDeleteSubtask:

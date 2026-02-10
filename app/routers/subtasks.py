@@ -80,6 +80,7 @@ async def list_subtasks(
             id=subtask.id,
             task_id=subtask.task_id,
             title=subtask.title,
+            description=subtask.description,
             is_completed=subtask.is_completed,
             position=subtask.position,
             created_at=subtask.created_at,
@@ -122,6 +123,7 @@ async def create_subtask(
     new_subtask = Subtask(
         task_id=task_id,
         title=subtask_data.title,
+        description=subtask_data.description,
         is_completed=False,
         position=next_position,
     )
@@ -139,6 +141,7 @@ async def create_subtask(
         id=new_subtask.id,
         task_id=new_subtask.task_id,
         title=new_subtask.title,
+        description=new_subtask.description,
         is_completed=new_subtask.is_completed,
         position=new_subtask.position,
         created_at=new_subtask.created_at,
@@ -168,13 +171,10 @@ async def update_subtask(
     # Verify task ownership and get task and project
     task, project = await verify_task_ownership(subtask.task_id, current_user.id, db)
 
-    # Update fields if provided
-    if subtask_data.title is not None:
-        subtask.title = subtask_data.title
-    if subtask_data.is_completed is not None:
-        subtask.is_completed = subtask_data.is_completed
-    if subtask_data.position is not None:
-        subtask.position = subtask_data.position
+    # Update fields that were explicitly provided (including None values for nullable fields)
+    update_data = subtask_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(subtask, field, value)
 
     now = datetime.now(UTC)
     subtask.updated_at = now
@@ -187,6 +187,7 @@ async def update_subtask(
         id=subtask.id,
         task_id=subtask.task_id,
         title=subtask.title,
+        description=subtask.description,
         is_completed=subtask.is_completed,
         position=subtask.position,
         created_at=subtask.created_at,

@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Uuid
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, generate_uuid
@@ -27,6 +27,10 @@ class Subtask(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(
         String(500),
         nullable=False,
+    )
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
     )
     is_completed: Mapped[bool] = mapped_column(
         Boolean,
