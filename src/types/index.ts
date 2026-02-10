@@ -115,6 +115,7 @@ export interface Subtask {
   id: string;
   task_id: string;
   title: string;
+  description: string | null;
   is_completed: boolean;
   position: number;
   created_at: string;
@@ -123,10 +124,12 @@ export interface Subtask {
 
 export interface SubtaskCreate {
   title: string;
+  description?: string | null;
 }
 
 export interface SubtaskUpdate {
   title?: string;
+  description?: string | null;
   is_completed?: boolean;
   position?: number;
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { tasksApi, subtasksApi, assigneesApi } from "@/lib/api";
 import {
@@ -74,6 +74,10 @@ export function TaskModal({
   const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks || []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [newSubtaskDescription, setNewSubtaskDescription] = useState("");
+  const [showDescriptionInput, setShowDescriptionInput] = useState(false);
+  const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
+  const [editingDescriptions, setEditingDescriptions] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -149,9 +153,12 @@ export function TaskModal({
     try {
       const subtask = await subtasksApi.create(task.id, {
         title: newSubtaskTitle.trim(),
+        description: newSubtaskDescription.trim() || undefined,
       });
       setSubtasks((prev) => [...prev, subtask]);
       setNewSubtaskTitle("");
+      setNewSubtaskDescription("");
+      setShowDescriptionInput(false);
       toast.success("Subtask added");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to add subtask";
@@ -178,6 +185,36 @@ export function TaskModal({
       toast.success("Subtask deleted");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete subtask";
+      toast.error(message);
+    }
+  };
+
+  const toggleSubtaskExpanded = (subtaskId: string) => {
+    setExpandedSubtasks((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(subtaskId)) {
+        newSet.delete(subtaskId);
+      } else {
+        newSet.add(subtaskId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleUpdateDescription = async (subtaskId: string, newDescription: string) => {
+    try {
+      const updated = await subtasksApi.update(subtaskId, {
+        description: newDescription.trim() || null,
+      });
+      setSubtasks((prev) => prev.map((st) => (st.id === subtaskId ? updated : st)));
+      setEditingDescriptions((prev) => {
+        const newState = { ...prev };
+        delete newState[subtaskId];
+        return newState;
+      });
+      toast.success("Description updated");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update description";
       toast.error(message);
     }
   };
@@ -284,58 +321,190 @@ export function TaskModal({
               <Field label="Subtasks" helperText={`${completedSubtasks}/${subtasks.length} completed`}>
                 <div className="space-y-3">
                   {/* Add Subtask */}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add a subtask..."
-                      value={newSubtaskTitle}
-                      onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddSubtask();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleAddSubtask}
-                      disabled={!newSubtaskTitle.trim()}
-                    >
-                      Add
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add a subtask..."
+                        value={newSubtaskTitle}
+                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !showDescriptionInput) {
+                            e.preventDefault();
+                            handleAddSubtask();
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddSubtask}
+                        disabled={!newSubtaskTitle.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    {!showDescriptionInput && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDescriptionInput(true)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        + Add description
+                      </button>
+                    )}
+                    {showDescriptionInput && (
+                      <Textarea
+                        placeholder="Description (optional)..."
+                        value={newSubtaskDescription}
+                        onChange={(e) => setNewSubtaskDescription(e.target.value)}
+                        rows={2}
+                        className="text-sm"
+                      />
+                    )}
                   </div>
 
                   {subtasks.length > 0 && (
                     <ScrollArea className="h-64 rounded-md border">
                       <div className="space-y-1 p-2">
-                        {subtasks.map((subtask) => (
-                          <div
-                            key={subtask.id}
-                            className="flex items-center gap-3 rounded-md border bg-card p-3 transition-colors hover:bg-accent/50"
-                          >
-                            <Checkbox
-                              checked={subtask.is_completed}
-                              onCheckedChange={() => handleToggleSubtask(subtask)}
-                              className="shrink-0"
-                            />
-                            <span
-                              className={`flex-1 text-xs ${
-                                subtask.is_completed ? "line-through text-muted-foreground" : ""
-                              }`}
+                        {subtasks.map((subtask) => {
+                          const isExpanded = expandedSubtasks.has(subtask.id);
+                          const isEditing = subtask.id in editingDescriptions;
+                          const hasDescription = subtask.description && subtask.description.trim().length > 0;
+
+                          return (
+                            <div
+                              key={subtask.id}
+                              className="rounded-md border bg-card transition-colors hover:bg-accent/50"
                             >
-                              {subtask.title}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDeleteSubtask(subtask.id)}
-                              className="h-8 w-8 shrink-0 p-0 text-destructive hover:bg-destructive/10"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
+                              {/* Main row */}
+                              <div className="flex items-center gap-3 p-3">
+                                <Checkbox
+                                  checked={subtask.is_completed}
+                                  onCheckedChange={() => handleToggleSubtask(subtask)}
+                                  className="shrink-0"
+                                />
+                                
+                                {/* Expand icon - only show if has description */}
+                                {hasDescription && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSubtaskExpanded(subtask.id)}
+                                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                )}
+
+                                <span
+                                  className={`flex-1 text-xs ${hasDescription ? "cursor-pointer" : ""} ${
+                                    subtask.is_completed ? "line-through text-muted-foreground" : ""
+                                  }`}
+                                  onClick={() => hasDescription ? toggleSubtaskExpanded(subtask.id) : null}
+                                >
+                                  {subtask.title}
+                                </span>
+
+                                {/* Show "Add description" link for subtasks without description */}
+                                {!hasDescription && !isExpanded && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSubtaskExpanded(subtask.id)}
+                                    className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+                                  >
+                                    + desc
+                                  </button>
+                                )}
+
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteSubtask(subtask.id)}
+                                  className="h-8 w-8 shrink-0 p-0 text-destructive hover:bg-destructive/10"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              {/* Expanded section - always allow adding/editing description */}
+                              {isExpanded && (
+                                <div className="px-3 pb-3 pl-11 space-y-2">
+                                  {isEditing ? (
+                                    <div className="space-y-2">
+                                      <Textarea
+                                        value={editingDescriptions[subtask.id]}
+                                        onChange={(e) =>
+                                          setEditingDescriptions((prev) => ({
+                                            ...prev,
+                                            [subtask.id]: e.target.value,
+                                          }))
+                                        }
+                                        rows={3}
+                                        className="text-xs"
+                                        autoFocus
+                                      />
+                                      <div className="flex gap-2">
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleUpdateDescription(
+                                              subtask.id,
+                                              editingDescriptions[subtask.id]
+                                            )
+                                          }
+                                        >
+                                          Save
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            setEditingDescriptions((prev) => {
+                                              const newState = { ...prev };
+                                              delete newState[subtask.id];
+                                              return newState;
+                                            })
+                                          }
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {hasDescription ? (
+                                        <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                                          {subtask.description}
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground italic">
+                                          No description
+                                        </p>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setEditingDescriptions((prev) => ({
+                                            ...prev,
+                                            [subtask.id]: subtask.description || "",
+                                          }))
+                                        }
+                                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                      >
+                                        {hasDescription ? "Edit description" : "Add description"}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </ScrollArea>
                   )}
