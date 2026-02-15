@@ -4,6 +4,10 @@
 
 set -e  # Exit on error
 
+# Resolve paths relative to this script so it works from any cwd
+SCRIPT_DIR="${0:A:h}"
+ENV_FILE="$SCRIPT_DIR/../fe-env/.env"
+
 # Configuration
 FRONTEND_PORT=${FRONTEND_PORT:-7654}
 CONTAINER_NAME="agent-kanban-frontend"
@@ -23,13 +27,13 @@ echo ""
 
 # Step 1: Git pull
 echo "${GREEN}[1/6] Pulling latest changes...${NC}"
-git pull
+git -C "$SCRIPT_DIR" pull
 echo ""
 
 # Step 2: Validate environment file
 echo "${GREEN}[2/6] Validating environment file...${NC}"
-if [[ ! -f "../fe-env/.env" ]]; then
-  echo "${RED}ERROR: ../fe-env/.env not found${NC}"
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "${RED}ERROR: $ENV_FILE not found${NC}"
   echo "Please create fe-env/.env in the project root"
   exit 1
 fi
@@ -39,7 +43,7 @@ echo "${GREEN}[3/6] Loading environment variables...${NC}"
 
 # Source the .env file (without copying)
 set -a
-source ../fe-env/.env
+source "$ENV_FILE"
 set +a
 
 # Validate required variables
@@ -60,7 +64,7 @@ echo ""
 echo "${GREEN}[5/6] Building Docker image...${NC}"
 docker build -t $IMAGE_NAME \
   --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL" \
-  .
+  "$SCRIPT_DIR"
 echo ""
 
 # Step 6: Run container
