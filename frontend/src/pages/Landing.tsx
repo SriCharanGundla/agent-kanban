@@ -6,7 +6,7 @@ export function Landing() {
     <div className="flex min-h-screen flex-col">
       {/* Header */}
       <header className="border-b">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container mx-auto flex h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold">AgentKanban</span>
           </div>
@@ -23,7 +23,7 @@ export function Landing() {
 
       {/* Hero */}
       <main className="flex-1">
-        <div className="container flex flex-col items-center justify-center py-24 text-center">
+        <div className="container mx-auto flex w-full flex-col items-center justify-center px-4 py-24 text-center sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl space-y-6">
             <div className="text-6xl">🤖 + 📋 = ✨</div>
             <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
