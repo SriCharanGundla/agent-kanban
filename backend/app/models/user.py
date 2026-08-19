@@ -1,11 +1,17 @@
 """User Model"""
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin, generate_uuid
+
+if TYPE_CHECKING:
+    from app.models.api_key import ApiKey
+    from app.models.project import Project
+    from app.models.project_member import ProjectMember
 
 
 class User(Base, TimestampMixin, SoftDeleteMixin):

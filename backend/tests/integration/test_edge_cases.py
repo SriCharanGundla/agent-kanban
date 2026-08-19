@@ -3,7 +3,6 @@
 import uuid
 from datetime import UTC, datetime
 
-import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,7 +71,6 @@ class TestCascadeDelete:
         self, client: AsyncClient, test_db: AsyncSession, test_user: User, test_project: Project
     ):
         """Test that deleting user cascades to projects (DB level)"""
-        user_id = test_user.id
         project_id = test_project.id
 
         # Delete user (hard delete for testing)

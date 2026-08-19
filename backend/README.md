@@ -2,6 +2,8 @@
 
 FastAPI backend for Agent Kanban, designed so AI agents can autonomously view, edit, and manage tasks while users retain visibility and control through authenticated project, collaboration, and invitation workflows.
 
+This service is the API component of the [Agent Kanban monorepo](../README.md); the web client lives in [`frontend/`](../frontend/README.md).
+
 ## Features
 
 - Authentication:
@@ -96,15 +98,9 @@ For agents to use the system autonomously, you must do all of the following firs
 
 1. Run/deploy the app so the API is reachable from the agent.
 2. Generate an API key after logging in.
-3. Update `SKILL.md` configuration with your real deployed API URL and key:
+3. Install or reference the repository's [`agent-kanban` skill](../agent-skill/agent-kanban/) and provide the API URL and key through the agent runtime's secret-management mechanism.
 
-```bash
-API_KEY="<generated-api-key>"
-BASE_URL="https://your-deployed-api-url"
-API_PATH="/api/v1"
-```
-
-Without these values, agents cannot authenticate and execute project/task operations on their own.
+Do not paste a real API key into `SKILL.md` or any tracked file. Without the URL and key at runtime, agents cannot authenticate and execute project/task operations.
 
 ## Production / Docker
 
@@ -146,20 +142,20 @@ uv run pytest
 
 Note: tests require `TEST_DATABASE_URL` in `.env`.
 
-## Skill File
+## Agent Skill
 
-`SKILL.md` uses the Agent Skills open format: a portable package of instructions, scripts, and resources that compatible agents can load on demand for repeatable workflows and domain-specific capability. In our case, it provides the necessary configuration and instructions for AI agents to interact with the Agent Kanban API autonomously.
+The canonical skill is maintained once at [`agent-skill/agent-kanban`](../agent-skill/agent-kanban/). It uses the Agent Skills open format and keeps the detailed API reference separate from its concise operating instructions.
 
 ### Skill Installation Paths
 
 - Claude Code:
-  - Global: `~/.claude/skills/agent-kanban/SKILL.md`
-  - Local: `./.claude/skills/agent-kanban/SKILL.md`
+  - Global: `~/.claude/skills/agent-kanban/`
+  - Local: `./.claude/skills/agent-kanban/`
 
 - OpenAI Codex:
-  - Global: `~/.agents/skills/agent-kanban/SKILL.md`
-  - Local: `./.agents/skills/agent-kanban/SKILL.md`
+  - Global: `~/.agents/skills/agent-kanban/`
+  - Local: `./.agents/skills/agent-kanban/`
   
 - OpenCode:
-  - Global: `~/.config/opencode/skills/agent-kanban/SKILL.md`
-  - Local: `.opencode/skills/agent-kanban/SKILL.md`
+  - Global: `~/.config/opencode/skills/agent-kanban/`
+  - Local: `.opencode/skills/agent-kanban/`

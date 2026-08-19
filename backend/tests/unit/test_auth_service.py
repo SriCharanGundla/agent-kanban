@@ -3,7 +3,6 @@
 import uuid
 from datetime import timedelta
 
-import pytest
 
 from app.services.auth import (
     API_KEY_LENGTH,

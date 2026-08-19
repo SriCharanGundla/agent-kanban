@@ -1,0 +1,13 @@
+.DS_Store
+.migration-sources/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+fe-env/
+be-env/
+
+# Local tooling
+.idea/
+.vscode/

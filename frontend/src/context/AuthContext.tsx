@@ -123,8 +123,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const updatedUser = await authApi.updateProfile(data);
       setUser(updatedUser);
-    } catch (error) {
-      throw error;
     } finally {
       setIsLoading(false);
     }

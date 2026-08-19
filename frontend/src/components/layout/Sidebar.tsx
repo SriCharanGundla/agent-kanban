@@ -65,7 +65,7 @@ export function AppSidebar() {
       isMounted = false;
       abortController.abort();
     };
-  }, [user?.id]);
+  }, [user]);
 
   // Navigation items
   const navItems = [

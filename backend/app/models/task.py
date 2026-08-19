@@ -2,11 +2,17 @@
 
 import enum
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum, ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin, generate_uuid
+
+if TYPE_CHECKING:
+    from app.models.project import Project
+    from app.models.subtask import Subtask
+    from app.models.user import User
 
 
 class TaskStatus(str, enum.Enum):

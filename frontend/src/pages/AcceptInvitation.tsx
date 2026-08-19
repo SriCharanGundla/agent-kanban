@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,28 +17,7 @@ export function AcceptInvitation() {
   const [state, setState] = useState<AcceptState>("loading");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Wait for auth to load
-    if (authLoading) {
-      return;
-    }
-
-    // If not authenticated, redirect to login with redirect param
-    if (!isAuthenticated) {
-      navigate(`/login?redirect=/invitations/${token}`, { replace: true });
-      return;
-    }
-
-    // If authenticated and have token, try to accept
-    if (token) {
-      acceptInvitation(token);
-    } else {
-      setState("error");
-      setError("Invalid invitation link");
-    }
-  }, [authLoading, isAuthenticated, token, navigate]);
-
-  const acceptInvitation = async (invitationToken: string) => {
+  const acceptInvitation = useCallback(async (invitationToken: string) => {
     try {
       setState("loading");
       const response = await invitationsApi.accept(invitationToken);
@@ -71,7 +50,30 @@ export function AcceptInvitation() {
         setError("Failed to accept invitation. Please try again or contact the project owner.");
       }
     }
-  };
+  }, [navigate]);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- route/auth changes initiate this async workflow */
+  useEffect(() => {
+    // Wait for auth to load
+    if (authLoading) {
+      return;
+    }
+
+    // If not authenticated, redirect to login with redirect param
+    if (!isAuthenticated) {
+      navigate(`/login?redirect=/invitations/${token}`, { replace: true });
+      return;
+    }
+
+    // If authenticated and have token, try to accept
+    if (token) {
+      void acceptInvitation(token);
+    } else {
+      setState("error");
+      setError("Invalid invitation link");
+    }
+  }, [acceptInvitation, authLoading, isAuthenticated, token, navigate]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Show loading skeleton while auth is loading
   if (authLoading) {

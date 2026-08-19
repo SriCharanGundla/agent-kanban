@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { membersApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ export function MembersTab({
   const [memberToRemove, setMemberToRemove] = useState<ProjectMember | null>(null);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
       const data = await membersApi.list(project.id);
@@ -57,11 +57,11 @@ export function MembersTab({
     } finally {
       setLoading(false);
     }
-  };
+  }, [project.id]);
 
   useEffect(() => {
     fetchMembers();
-  }, [project.id]);
+  }, [fetchMembers]);
 
   const handleRoleChange = async (memberId: string, newRole: ProjectRole) => {
     setUpdatingMemberId(memberId);

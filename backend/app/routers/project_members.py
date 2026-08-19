@@ -30,7 +30,6 @@ from app.schemas.project_member import (
     InviteMemberResponse,
     ProjectMemberResponse,
     UpdateMemberRoleRequest,
-    UserBasic,
 )
 from app.services.project_access import is_project_owner
 

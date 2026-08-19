@@ -159,7 +159,7 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
           "flex flex-grow flex-col gap-2",
           !isEmpty && "p-2",
           className
-        )} {...(props as any)}>
+        )} {...props}>
           {filteredData.map(children)}
         </div>
       </SortableContext>

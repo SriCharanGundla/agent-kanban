@@ -79,10 +79,6 @@ export function Board({
   // Track original task before drag for API calls
   const originalTaskRef = useRef<Task | null>(null);
   
-  // SSR guard
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
   // Sync tasks prop to kanbanData format whenever tasks change
   useEffect(() => {
     const data = tasks
@@ -94,6 +90,9 @@ export function Board({
         column: task.status,
         task: task,
       }));
+    // The drag-and-drop component owns a temporary local ordering; replace it
+    // only when the server-backed task collection changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setKanbanData(data);
   }, [tasks]);
 
@@ -168,11 +167,6 @@ export function Board({
       onTaskUpdate(originalTask);
     }
   };
-
-  // SSR loading state
-  if (!mounted) {
-    return <div className="h-96 w-full animate-pulse bg-muted/50" />;
-  }
 
   return (
     <div className="space-y-4">
