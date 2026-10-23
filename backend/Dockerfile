@@ -3,6 +3,12 @@
 
 FROM ghcr.io/astral-sh/uv:0.5.14-python3.12-bookworm-slim
 
+# Refresh the system trust store when rebuilding after CA security updates.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy dependency files first for better caching
