@@ -2,7 +2,7 @@
 # Multi-stage build: Node for building, Nginx for serving
 
 # Build stage
-FROM node:22.12.0-slim AS builder
+FROM node:22.23.4-slim AS builder
 
 WORKDIR /app
 
